@@ -27,22 +27,6 @@ RUN pip install --no-cache-dir --upgrade pip
 RUN pip config set global.index-url https://pypi.mirrors.ustc.edu.cn/simple/
 
 RUN pip install --no-cache-dir \
-    torch==2.6.0 \
-    torchaudio==2.6.0 \
-    torchvision==0.21.0
-
-
-ENV FORCE_CUDA="1"
-# A100: 8.0, RTX 30xx: 8.6, RTX 40xx/H100: 8.9 or 9.0
-ENV TORCH_CUDA_ARCH_LIST="8.0"
-ENV GROUPED_GEMM_CUTLASS="1"
-
-ENV CUDA_HOME=/usr/local/cuda
-ENV CUDA_ROOT=/usr/local/cuda
-ENV PATH=/usr/local/cuda/bin:$PATH
-ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
-
-RUN pip install --no-cache-dir --no-build-isolation \
     tokenizers \
     # grouped_gemm==0.1.4 \
     peft==0.17.1 \
@@ -58,7 +42,8 @@ RUN pip install --no-cache-dir --no-build-isolation \
     accelerate==1.3.0 \
     onnxruntime \
     jiwer==3.1.0 \
-    rich
+    rich \
+    gradio
 
 ARG FLASH_ATTN_WHEEL=flash_attn-2.7.0.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 ARG FLASH_ATTN_URL=https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.0.post1/${FLASH_ATTN_WHEEL}

@@ -494,18 +494,18 @@ def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
                             placeholder="例如: 这是一位温柔的母亲声音，音色低沉浑厚，充满关爱",
                             lines=3,
                         )
-                        gr.Examples(
-                            examples=[
-                                ["一位温柔的母亲声音，音色低沉浑厚，充满关爱"],
-                                ["年轻的男性主播，声音清澈明亮，富有活力"],
-                                ["成熟的男性嗓音，声线低沉，带有一点沙哑"],
-                                ["可爱的小女孩声音，甜美清脆，充满元气"],
-                                ["一位威严的皇后，声音沉稳大气，充满威压"],
-                                ["ASMR耳语，气音重，音量极低，语速极慢"],
-                            ],
-                            inputs=voice_description,
-                            label="音色描述示例",
-                        )
+                        with gr.Accordion("音色描述示例", open=False):
+                            gr.Examples(
+                                examples=[
+                                    ["一位温柔的母亲声音，音色低沉浑厚，充满关爱"],
+                                    ["年轻的男性主播，声音清澈明亮，富有活力"],
+                                    ["成熟的男性嗓音，声线低沉，带有一点沙哑"],
+                                    ["可爱的小女孩声音，甜美清脆，充满元气"],
+                                    ["一位威严的皇后，声音沉稳大气，充满威压"],
+                                    ["ASMR耳语，气音重，音量极低，语速极慢"],
+                                ],
+                                inputs=voice_description,
+                            )
 
                     with gr.Group():
                         gr.Markdown("#### 高级参数")

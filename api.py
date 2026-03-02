@@ -145,24 +145,30 @@ def create_api(model):
         text = request.args.get("text", "")
         speaker = request.args.get("speaker", "京京")
 
+        config_list = get_config_list()
+        default_speaker = config_list[0] if config_list else "京京"
+        config_options = "".join(
+            [f'<option value="{c}">{c}</option>' for c in config_list]
+        )
+
         if not text:
-            return """<!DOCTYPE html>
+            return f"""<!DOCTYPE html>
 <html>
 <head>
     <title>Ming-Omni-TTS WebUI</title>
     <meta charset="utf-8">
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
-        h1 { color: #333; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="text"], textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { background: #4CAF50; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        button:hover { background: #45a049; }
-        #result { margin-top: 20px; }
-        audio { width: 100%; margin-top: 10px; }
-        .info { background: #e3f2fd; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #2196F3; }
-        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        body {{ font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; background: #f5f5f5; }}
+        h1 {{ color: #333; }}
+        .form-group {{ margin-bottom: 15px; }}
+        label {{ display: block; margin-bottom: 5px; font-weight: bold; }}
+        input[type="text"], textarea, select {{ width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 14px; }}
+        button {{ background: #4CAF50; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }}
+        button:hover {{ background: #45a049; }}
+        #result {{ margin-top: 20px; }}
+        audio {{ width: 100%; margin-top: 10px; }}
+        .info {{ background: #e3f2fd; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #2196F3; }}
+        .container {{ background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
     </style>
 </head>
 <body>
@@ -170,9 +176,7 @@ def create_api(model):
         <h1>🎤 Ming-Omni-TTS 语音合成</h1>
         <div class="info">
             <p><strong>📡 API 调用方式：</strong></p>
-            <code>GET http://your-server:7860/?text=要合成的文本&speaker=配置文件名</code>
-            <p>例如：<code>http://your-server:7860/?text=你好世界&speaker=京京</code></p>
-            <p><strong>📂 可用配置文件：</strong> 京京, 广末凉子, 苏瑶, 走心女主播</p>
+            <code id="api-example">GET http://10.10.10.10:7860/?text=要合成的文本&speaker={default_speaker}</code>
         </div>
         <div class="form-group">
             <label>输入文本：</label>
@@ -180,41 +184,49 @@ def create_api(model):
         </div>
         <div class="form-group">
             <label>说话人配置：</label>
-            <input type="text" id="speaker" value="京京" placeholder="配置文件名，如：京京">
+            <select id="speaker" onchange="updateApiExample()">
+                {config_options if config_options else f'<option value="{default_speaker}">{default_speaker}</option>'}
+            </select>
         </div>
         <button onclick="generate()">🎵 生成语音</button>
         <div id="result"></div>
     </div>
     <script>
-        async function generate() {
+        function updateApiExample() {{
+            const speaker = document.getElementById('speaker').value;
+            const example = 'http://10.10.10.10:7860/?text=要合成的文本&speaker=' + encodeURIComponent(speaker);
+            document.getElementById('api-example').textContent = example;
+        }}
+        
+        async function generate() {{
             const text = document.getElementById('text').value;
             const speaker = document.getElementById('speaker').value;
             const result = document.getElementById('result');
             
-            if (!text) {
+            if (!text) {{
                 result.innerHTML = '<p style="color:red;">请输入文本</p>';
                 return;
-            }
+            }}
             
             result.innerHTML = '<p>⏳ 正在生成...</p>';
             
-            try {
+            try {{
                 const url = '/?text=' + encodeURIComponent(text) + '&speaker=' + encodeURIComponent(speaker);
                 const response = await fetch(url);
                 
-                if (!response.ok) {
+                if (!response.ok) {{
                     const error = await response.text();
                     result.innerHTML = '<p style="color:red;">❌ 错误: ' + error + '</p>';
                     return;
-                }
+                }}
                 
                 const blob = await response.blob();
                 const audioUrl = URL.createObjectURL(blob);
                 result.innerHTML = '<audio controls src="' + audioUrl + '"></audio>';
-            } catch (e) {
+            }} catch (e) {{
                 result.innerHTML = '<p style="color:red;">❌ 错误: ' + e.message + '</p>';
-            }
-        }
+            }}
+        }}
     </script>
 </body>
 </html>"""

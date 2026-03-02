@@ -60,6 +60,7 @@ class MingAudio:
                 {
                     "序号": 1,
                     "说话人": "speaker_1",
+                    "音色描述": None,
                     "方言": None,
                     "风格": None,
                     "语速": None,
@@ -215,6 +216,7 @@ def generate_speech(
     sigma,
     temperature,
     task_type,
+    voice_description,
 ):
     global model, OUTPUT_DIR
 
@@ -233,18 +235,34 @@ def generate_speech(
     use_zero_spk_emb = prompt_audio is None
 
     instruction = {}
-    if emotion and emotion != "无":
-        instruction["情感"] = emotion
-    if dialect and dialect != "无":
-        instruction["方言"] = dialect
-    if style and style != "无":
-        instruction["风格"] = style
-    if speech_speed and speech_speed != 1.0:
-        instruction["语速"] = speech_speed
-    if pitch and pitch != 1.0:
-        instruction["基频"] = pitch
-    if volume and volume != 1.0:
-        instruction["音量"] = volume
+    # 音色描述优先：如果用户输入了音色描述，其他控制参数作为补充
+    if voice_description and voice_description.strip():
+        instruction["音色描述"] = voice_description.strip()
+        if emotion and emotion != "无":
+            instruction["情感"] = emotion
+        if dialect and dialect != "无":
+            instruction["方言"] = dialect
+        if style and style != "无":
+            instruction["风格"] = style
+        if speech_speed and speech_speed != 1.0:
+            instruction["语速"] = speech_speed
+        if pitch and pitch != 1.0:
+            instruction["基频"] = pitch
+        if volume and volume != 1.0:
+            instruction["音量"] = volume
+    else:
+        if emotion and emotion != "无":
+            instruction["情感"] = emotion
+        if dialect and dialect != "无":
+            instruction["方言"] = dialect
+        if style and style != "无":
+            instruction["风格"] = style
+        if speech_speed and speech_speed != 1.0:
+            instruction["语速"] = speech_speed
+        if pitch and pitch != 1.0:
+            instruction["基频"] = pitch
+        if volume and volume != 1.0:
+            instruction["音量"] = volume
 
     if task_type == "语音合成 (TTS)":
         prompt = "Please generate speech based on the following description.\n"
@@ -349,6 +367,23 @@ def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
                             label="风格",
                             value="无",
                         )
+                        voice_description = gr.Textbox(
+                            label="音色描述 (可选)",
+                            placeholder="例如: 这是一位温柔的母亲声音，音色低沉浑厚，充满关爱",
+                            lines=3,
+                        )
+                        gr.Examples(
+                            examples=[
+                                ["一位温柔的母亲声音，音色低沉浑厚，充满关爱"],
+                                ["年轻的男性主播，声音清澈明亮，富有活力"],
+                                ["成熟的男性嗓音，声线低沉，带有一点沙哑"],
+                                ["可爱的小女孩声音，甜美清脆，充满元气"],
+                                ["一位威严的皇后，声音沉稳大气，充满威压"],
+                                ["ASMR耳语，气音重，音量极低，语速极慢"],
+                            ],
+                            inputs=voice_description,
+                            label="音色描述示例",
+                        )
 
                     with gr.Group():
                         gr.Markdown("#### 高级参数")
@@ -438,6 +473,7 @@ def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
                     sigma,
                     temperature,
                     gr.State("语音合成 (TTS)"),
+                    voice_description,
                 ],
                 outputs=[output_audio, status_msg],
             )
@@ -517,6 +553,7 @@ def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
                     sigma_tta,
                     temperature_tta,
                     gr.State("声音事件 (TTA)"),
+                    gr.State(None),
                 ],
                 outputs=[output_audio_tta, status_msg_tta],
             )
@@ -605,6 +642,7 @@ def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
                     0.25,
                     0.0,
                     "背景音乐 (BGM)",
+                    None,
                 )
 
             generate_btn_bgm.click(

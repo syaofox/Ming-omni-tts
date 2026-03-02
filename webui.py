@@ -189,7 +189,9 @@ class MingAudio:
 
 model = None
 OUTPUT_DIR = "./output"
+CONFIG_DIR = "./saved_configs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(CONFIG_DIR, exist_ok=True)
 
 
 def load_model_fn(model_path):
@@ -199,6 +201,118 @@ def load_model_fn(model_path):
         model = MingAudio(model_path)
         logger.info("Model loaded successfully!")
     return model
+
+
+def copy_audio_to_config_dir(audio_path, config_name):
+    if audio_path is None:
+        return None
+    config_audio_dir = os.path.join(CONFIG_DIR, config_name, "audio")
+    os.makedirs(config_audio_dir, exist_ok=True)
+    audio_ext = os.path.splitext(audio_path)[1]
+    dest_path = os.path.join(config_audio_dir, f"ref_audio{audio_ext}")
+    import shutil
+
+    shutil.copy2(audio_path, dest_path)
+    return dest_path
+
+
+def save_config(
+    config_name,
+    prompt_audio,
+    prompt_text,
+    emotion,
+    dialect,
+    style,
+    voice_description,
+    speech_speed,
+    pitch,
+    volume,
+    max_decode_steps,
+    cfg,
+    sigma,
+    temperature,
+):
+    if not config_name or not config_name.strip():
+        return "请输入配置名称", False
+
+    config_name = config_name.strip()
+    config_path = os.path.join(CONFIG_DIR, config_name)
+
+    if os.path.exists(config_path):
+        return f"配置 '{config_name}' 已存在，请使用其他名称", False
+
+    os.makedirs(config_path, exist_ok=True)
+
+    copied_audio = copy_audio_to_config_dir(prompt_audio, config_name)
+
+    config_data = {
+        "name": config_name,
+        "task_type": "TTS",
+        "prompt_audio": copied_audio,
+        "prompt_text": prompt_text,
+        "emotion": emotion,
+        "dialect": dialect,
+        "style": style,
+        "voice_description": voice_description,
+        "speech_speed": speech_speed,
+        "pitch": pitch,
+        "volume": volume,
+        "max_decode_steps": max_decode_steps,
+        "cfg": cfg,
+        "sigma": sigma,
+        "temperature": temperature,
+    }
+
+    import json
+
+    config_file = os.path.join(config_path, "config.json")
+    with open(config_file, "w", encoding="utf-8") as f:
+        json.dump(config_data, f, ensure_ascii=False, indent=2)
+
+    return f"配置 '{config_name}' 保存成功!", True
+
+
+def get_config_list():
+    if not os.path.exists(CONFIG_DIR):
+        return []
+    configs = []
+    for item in os.listdir(CONFIG_DIR):
+        item_path = os.path.join(CONFIG_DIR, item)
+        if os.path.isdir(item_path):
+            config_file = os.path.join(item_path, "config.json")
+            if os.path.exists(config_file):
+                configs.append(item)
+    return sorted(configs)
+
+
+def load_config(config_name):
+    if not config_name:
+        return None, "请选择要加载的配置"
+
+    config_path = os.path.join(CONFIG_DIR, config_name, "config.json")
+    if not os.path.exists(config_path):
+        return None, f"配置 '{config_name}' 不存在"
+
+    import json
+
+    with open(config_path, "r", encoding="utf-8") as f:
+        config_data = json.load(f)
+
+    return config_data, "配置加载成功"
+
+
+def delete_config(config_name):
+    if not config_name:
+        return "请选择要删除的配置", False
+
+    config_path = os.path.join(CONFIG_DIR, config_name)
+    if not os.path.exists(config_path):
+        return f"配置 '{config_name}' 不存在", False
+
+    import shutil
+
+    shutil.rmtree(config_path)
+    return f"配置 '{config_name}' 已删除", True
 
 
 def generate_speech(
@@ -439,6 +553,39 @@ def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
                             label="Temperature",
                         )
 
+                    with gr.Group():
+                        gr.Markdown("#### 配置管理")
+                        with gr.Row():
+                            config_name_input = gr.Textbox(
+                                label="配置名称",
+                                placeholder="输入配置名称保存...",
+                                scale=2,
+                            )
+                            save_config_btn = gr.Button("💾 保存配置", scale=1)
+                        config_save_status = gr.Textbox(
+                            label="保存状态",
+                            interactive=False,
+                            lines=1,
+                        )
+
+                        with gr.Row():
+                            config_dropdown = gr.Dropdown(
+                                choices=get_config_list(),
+                                label="已保存配置",
+                                scale=2,
+                            )
+                            refresh_configs_btn = gr.Button("🔄 刷新", scale=1)
+                        with gr.Row():
+                            load_config_btn = gr.Button("📂 加载配置", scale=1)
+                            delete_config_btn = gr.Button(
+                                "🗑️ 删除配置", variant="stop", scale=1
+                            )
+                        config_load_status = gr.Textbox(
+                            label="加载状态",
+                            interactive=False,
+                            lines=1,
+                        )
+
                     generate_btn = gr.Button("🎵 生成语音", variant="primary")
 
                 with gr.Column(scale=1):
@@ -482,6 +629,157 @@ def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
                 fn=lambda x: x,
                 inputs=output_audio,
                 outputs=download_btn,
+            )
+
+            def on_save_config(
+                config_name,
+                prompt_audio,
+                prompt_text,
+                emotion,
+                dialect,
+                style,
+                voice_description,
+                speech_speed,
+                pitch,
+                volume,
+                max_decode_steps,
+                cfg,
+                sigma,
+                temperature,
+            ):
+                msg, success = save_config(
+                    config_name,
+                    prompt_audio,
+                    prompt_text,
+                    emotion,
+                    dialect,
+                    style,
+                    voice_description,
+                    speech_speed,
+                    pitch,
+                    volume,
+                    max_decode_steps,
+                    cfg,
+                    sigma,
+                    temperature,
+                )
+                if success:
+                    new_choices = get_config_list()
+                    return msg, gr.update(choices=new_choices), ""
+                return msg, gr.update(), ""
+
+            save_config_btn.click(
+                fn=on_save_config,
+                inputs=[
+                    config_name_input,
+                    prompt_audio,
+                    prompt_text,
+                    emotion,
+                    dialect,
+                    style,
+                    voice_description,
+                    speech_speed,
+                    pitch,
+                    volume,
+                    max_decode_steps,
+                    cfg,
+                    sigma,
+                    temperature,
+                ],
+                outputs=[config_save_status, config_dropdown, config_name_input],
+            )
+
+            def on_load_config(config_name):
+                if not config_name:
+                    return (
+                        "请选择要加载的配置",
+                        None,
+                        "",
+                        "无",
+                        "无",
+                        "无",
+                        "",
+                        1.0,
+                        1.0,
+                        1.0,
+                        200,
+                        2.0,
+                        0.25,
+                        0.0,
+                    )
+                config_data, msg = load_config(config_name)
+                if config_data is None:
+                    return (
+                        msg,
+                        None,
+                        "",
+                        "无",
+                        "无",
+                        "无",
+                        "",
+                        1.0,
+                        1.0,
+                        1.0,
+                        200,
+                        2.0,
+                        0.25,
+                        0.0,
+                    )
+                return (
+                    msg,
+                    config_data.get("prompt_audio"),
+                    config_data.get("prompt_text", ""),
+                    config_data.get("emotion", "无"),
+                    config_data.get("dialect", "无"),
+                    config_data.get("style", "无"),
+                    config_data.get("voice_description", ""),
+                    config_data.get("speech_speed", 1.0),
+                    config_data.get("pitch", 1.0),
+                    config_data.get("volume", 1.0),
+                    config_data.get("max_decode_steps", 200),
+                    config_data.get("cfg", 2.0),
+                    config_data.get("sigma", 0.25),
+                    config_data.get("temperature", 0.0),
+                )
+
+            load_config_btn.click(
+                fn=on_load_config,
+                inputs=config_dropdown,
+                outputs=[
+                    config_load_status,
+                    prompt_audio,
+                    prompt_text,
+                    emotion,
+                    dialect,
+                    style,
+                    voice_description,
+                    speech_speed,
+                    pitch,
+                    volume,
+                    max_decode_steps,
+                    cfg,
+                    sigma,
+                    temperature,
+                ],
+            )
+
+            refresh_configs_btn.click(
+                fn=lambda: gr.update(choices=get_config_list()),
+                outputs=config_dropdown,
+            )
+
+            def on_delete_config(config_name):
+                if not config_name:
+                    return "请选择要删除的配置", gr.update(choices=get_config_list())
+                msg, success = delete_config(config_name)
+                if success:
+                    return msg, gr.update(choices=get_config_list(), value=None)
+                return msg, gr.update()
+
+            delete_config_btn.click(
+                fn=on_delete_config,
+                inputs=config_dropdown,
+                outputs=[config_load_status, config_dropdown],
             )
 
         with gr.Tab("声音事件 (TTA)"):

@@ -3,6 +3,9 @@ services:
     build:
       context: .
       dockerfile: docker/ming_uniaudio.dockerfile
+      args:
+        - UID=${UID:-1000}
+        - GID=${GID:-1000}
     container_name: ming-omni-tts
     # runtime: nvidia
     deploy:
@@ -22,3 +25,4 @@ services:
     working_dir: /app
     stdin_open: true
     tty: true
+    user: "${UID:-1000}:${GID:-1000}"

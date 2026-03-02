@@ -8,8 +8,6 @@ Ming-omni-tts 是一个高性能的统一音频生成模型，支持语音、音
 
 ### Docker 环境（推荐）
 
-本项目使用 Docker 部署，已配置好 CUDA 12.4 和所有依赖。
-
 ```bash
 # 构建 Docker 镜像
 docker compose build
@@ -26,49 +24,70 @@ docker compose run --rm ming-omni-tts
 
 ## 构建与运行命令
 
-### 构建命令
-
-```bash
-# 构建 Docker 镜像
-docker compose build
-
-# 重新构建（不带缓存）
-docker compose build --no-cache
-```
-
-### 运行命令
+### 运行测试
 
 ```bash
 # 运行完整测试（所有示例）
 docker compose run --rm ming-omni-tts python cookbooks/test.py
 
-# 运行单个测试用例 - 编辑 test.py 注释不需要的测试
+# 运行单个测试用例
+# TTS 测试
 docker compose run --rm ming-omni-tts python -c "
-import sys
-sys.path.insert(0, '.')
-# 只运行 TTA 测试
-exec('''
+import sys; sys.path.insert(0, '.')
 from cookbooks.test import MingAudio
-model = MingAudio(\"./models/Ming-omni-tts-0.5B\")
-decode_args = {\"max_decode_steps\": 200, \"cfg\": 4.5, \"sigma\": 0.3, \"temperature\": 2.5}
-messages = {\"prompt\": \"Please generate audio events based on given text.\n\", \"text\": \"Thunder and a gentle rain\"}
-model.speech_generation(**messages, **decode_args, output_wav_path=\"output/tta.wav\")
-''')
-"
+model = MingAudio('./models/Ming-omni-tts-0.5B')
+model.speech_generation(
+    prompt='Please generate speech based on the following description.\n',
+    text='你好世界',
+    use_zero_spk_emb=True,
+    output_wav_path='output/test.wav'
+)"
+
+# TTA 测试
+docker compose run --rm ming-omni-tts python -c "
+import sys; sys.path.insert(0, '.')
+from cookbooks.test import MingAudio
+model = MingAudio('./models/Ming-omni-tts-0.5B')
+model.speech_generation(
+    prompt='Please generate audio events based on given text.\n',
+    text='Thunder and a gentle rain',
+    max_decode_steps=200, cfg=4.5, sigma=0.3, temperature=2.5,
+    output_wav_path='output/tta.wav'
+)"
+
+# BGM 测试
+docker compose run --rm ming-omni-tts python -c "
+import sys; sys.path.insert(0, '.')
+from cookbooks.test import MingAudio
+model = MingAudio('./models/Ming-omni-tts-0.5B')
+model.speech_generation(
+    prompt='Please generate music based on the following description.\n',
+    text='Genre: 电子舞曲 Mood: 欢快 Instrument: 架子鼓',
+    max_decode_steps=400,
+    output_wav_path='output/bgm.wav'
+)"
 ```
 
-### Lint 命令
+### WebUI 启动
 
-项目暂无 formal lint 配置，可使用以下工具：
+```bash
+# 启动 WebUI（需要 GPU + 模型文件）
+docker compose run --rm -p 7860:7860 ming-omni-tts python webui.py
+
+# 启动 WebUI（无模型测试模式）
+docker compose run --rm -p 7860:7860 -e LOAD_MODEL=false ming-omni-tts python webui.py
+```
+
+## Lint 命令
 
 ```bash
 # Python 语法检查
 docker compose run --rm ming-omni-tts python -m py_compile <file.py>
 
-# ruff (需安装)
+# ruff 检查
 docker compose run --rm ming-omni-tts pip install ruff && ruff check .
 
-# black 格式化
+# black 格式化检查
 docker compose run --rm ming-omni-tts pip install black && black --check .
 ```
 
@@ -89,19 +108,16 @@ docker compose run --rm ming-omni-tts pip install black && black --check .
 3. 本地模块 (from .xxx import, from cookbooks.xxx)
 
 ```python
-# 标准库
 import os
 import sys
 import json
 from typing import Dict, Optional, List
 
-# 第三方库
 import torch
 import torch.nn as nn
 from transformers import PreTrainedModel
 from loguru import logger
 
-# 本地模块
 from modeling_bailingmm import BailingMMNativeForConditionalGeneration
 from sentence_manager.sentence_manager import SentenceNormalizer
 ```
@@ -118,14 +134,12 @@ from sentence_manager.sentence_manager import SentenceNormalizer
 推荐为新代码添加类型注解：
 
 ```python
-# 函数类型注解
 def generate_speech(
     text: str,
     prompt_wav: Optional[str] = None,
     max_decode_steps: int = 200
 ) -> torch.Tensor:
 
-# 类属性类型注解
 class MingAudio:
     def __init__(self, model_path: str, device: str = "cuda:0"):
         self.device: str = device
@@ -140,14 +154,12 @@ class MingAudio:
 ```python
 from loguru import logger
 
-# 捕获异常并记录
 try:
     result = model.generate(...)
 except Exception as e:
     logger.error(f"生成失败: {e}")
     raise
 
-# 警告信息
 logger.warning("GPU 内存不足，切换到 CPU 模式")
 ```
 
@@ -156,15 +168,6 @@ logger.warning("GPU 内存不足，切换到 CPU 模式")
 - 缩进: 4 空格
 - 行长度: 推荐 100 字符以内
 - 字符串引号: 双引号优先
-
-```python
-# 推荐
-instruction = {"情感": "高兴", "语速": "快速"}
-prompt = "Please generate speech based on the following description.\n"
-
-# 不推荐
-instruction = {'情感': '高兴'}  # 单引号
-```
 
 ### 文档字符串
 
@@ -194,26 +197,72 @@ Ming-omni-tts/
 ├── modeling_bailingmm.py      # 主模型定义
 ├── modeling_bailing_moe.py    # MoE 模型
 ├── configuration_bailingmm.py # 配置类
+├── webui.py                   # WebUI 界面
+├── spkemb_extractor.py       # 说话人embedding提取
 ├── audio_tokenizer/          # 音频 tokenizer
 │   ├── modeling_audio_vae.py
 │   └── audio_encoder.py
 ├── fm/                       # 流匹配模块
 │   ├── dit.py
-│   └── flowloss.py
+│   ├── flowloss.py
+│   └── CFM.py
 ├── sentence_manager/         # 文本规范化
 ├── cookbooks/
-│   └── test.py              # 测试/演示脚本
-├── docker/
-│   └── ming_uniaudio.dockerfile
+│   ├── test.py              # 测试脚本
+│   └── instructions.md      # 指令说明
 └── models/                  # 模型文件目录
 ```
+
+## 推理类别
+
+| 类别 | Prompt | 说明 |
+|------|--------|------|
+| 语音合成 (TTS) | "Please generate speech based on the following description.\n" | 文本转语音 |
+| 声音事件 (TTA) | "Please generate audio events based on given text.\n" | 声音事件合成 |
+| 背景音乐 (BGM) | "Please generate music based on the following description.\n" | 音乐生成 |
+
+## 声音控制指令格式
+
+`instruction` 参数支持以下字段：
+
+```python
+instruction = {
+    "audio_sequence": [{
+        "序号": 1,
+        "说话人": "speaker_1",
+        "音色描述": "一位温柔的母亲声音，音色低沉浑厚",  # 音色描述（优先级最高）
+        "情感": "高兴",      # 高兴/悲伤/愤怒/惊讶/恐惧/厌恶
+        "方言": "普通话",    # 普通话/广粤话/四川话/东北话/河南话
+        "风格": "新闻播报",  # 正式/casual/新闻播报/讲故事/ASMR耳语
+        "语速": 1.0,        # 0.5-2.0
+        "基频": 1.0,        # 音高 0.5-2.0
+        "音量": 1.0,        # 0.5-2.0
+        "IP": "灵小甄",     # 内置音色（可选）
+        "BGM": {           # 背景音乐/音效
+            "Genre": "电子舞曲",
+            "Mood": "欢快",
+            "Instrument": "架子鼓",
+            "Theme": "节日",
+            "ENV": "鸟鸣",
+            "SNR": 10.0
+        }
+    }]
+}
+```
+
+### 使用优先级
+
+1. **音色描述**: 文字描述音色特征，优先级最高
+2. **参考音频**: 上传音频克隆声音
+3. **内置音色 IP**: 使用内置音色（如"灵小甄"）
+4. **控制参数**: 情感/方言/风格等作为补充
 
 ## 常见问题
 
 ### 模型加载失败
 
 - 确认模型文件在 `./models/Ming-omni-tts-0.5B`
-- 检查 CUDA 是否可用: `docker compose run --rm ming-omni-tts python -c "import torch; print(torch.cuda.is_available())"`
+- 检查 CUDA: `docker compose run --rm ming-omni-tts python -c "import torch; print(torch.cuda.is_available())"`
 
 ### GPU 内存不足
 
@@ -224,50 +273,3 @@ Ming-omni-tts/
 
 - 始终使用 Docker 环境运行
 - 避免在宿主机直接安装依赖
-
-## WebUI 命令
-
-```bash
-# 启动 WebUI（需要 GPU + 模型文件）
-docker compose run --rm -p 7860:7860 ming-omni-tts python webui.py
-
-# 启动 WebUI（无模型测试模式）
-docker compose run --rm -p 7860:7860 -e LOAD_MODEL=false ming-omni-tts python webui.py
-
-# 环境变量
-# - MODEL_PATH: 模型路径 (默认: ./models/Ming-omni-tts-0.5B)
-# - PORT: 端口 (默认: 7860)
-# - LOAD_MODEL: 是否加载模型 (默认: true)
-```
-
-## 测试命令
-
-```bash
-# 运行完整测试（所有示例）
-docker compose run --rm ming-omni-tts python cookbooks/test.py
-
-# 运行单个测试用例
-docker compose run --rm ming-omni-tts python -c "
-import sys
-sys.path.insert(0, '.')
-exec('''
-from cookbooks.test import MingAudio
-model = MingAudio(\"./models/Ming-omni-tts-0.5B\")
-decode_args = {\"max_decode_steps\": 200, \"cfg\": 4.5, \"sigma\": 0.3, \"temperature\": 2.5}
-messages = {\"prompt\": \"Please generate audio events based on given text.\n\", \"text\": \"Thunder and a gentle rain\"}
-model.speech_generation(**messages, **decode_args, output_wav_path=\"output/tta.wav\")
-''')
-"
-```
-
-## Lint 命令
-
-```bash
-# Python 语法检查
-docker compose run --rm ming-omni-tts python -m py_compile <file.py>
-
-# ruff 检查
-docker compose run --rm ming-omni-tts pip install ruff && ruff check .
-
-# black 格式化检查
-docker compose run --rm ming-omni-tts pip install black && black --check .

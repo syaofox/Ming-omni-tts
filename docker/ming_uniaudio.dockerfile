@@ -51,6 +51,11 @@ RUN wget -q ${FLASH_ATTN_URL} -O /tmp/${FLASH_ATTN_WHEEL} && \
     pip install --no-cache-dir /tmp/${FLASH_ATTN_WHEEL} && \
     rm /tmp/${FLASH_ATTN_WHEEL}
 
+ARG UID=1000
+ARG GID=1000
+RUN groupadd -g ${GID} appgroup && \
+    useradd -m -u ${UID} -g ${GID} -s /bin/bash appuser
+
 WORKDIR /app
 
 CMD ["/bin/bash"]

@@ -9,6 +9,10 @@ import torch
 import torchaudio
 from transformers import AutoTokenizer
 import gradio as gr
+from flask import Flask, request, send_file
+from flask_cors import CORS
+import io
+import uuid
 from loguru import logger
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -416,11 +420,15 @@ def generate_speech(
         return None, f"生成失败: {str(e)}"
 
 
-def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
+def create_webui(
+    model_path="./models/Ming-omni-tts-0.5B", load_model=True, external_model=None
+):
+    global model
     if load_model:
         load_model_fn(model_path)
+    elif external_model is not None:
+        model = external_model
     else:
-        global model
         model = None
         logger.info("Running in demo mode without model")
 
@@ -959,10 +967,172 @@ def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
     return demo
 
 
+def create_api(model):
+    app = Flask(__name__)
+    CORS(app)
+
+    @app.route("/")
+    def handle_request():
+        text = request.args.get("text", "")
+        speaker = request.args.get("speaker", "京京")
+
+        if not text:
+            return """<!DOCTYPE html>
+<html>
+<head>
+    <title>Ming-Omni-TTS WebUI</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+        h1 { color: #333; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { background: #4CAF50; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #45a049; }
+        #result { margin-top: 20px; }
+        audio { width: 100%; margin-top: 10px; }
+        .info { background: #e3f2fd; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #2196F3; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Ming-Omni-TTS 语音合成</h1>
+        <div class="info">
+            <p><strong>📡 API 调用方式：</strong></p>
+            <code>GET http://your-server:7860/?text=要合成的文本&speaker=配置文件名</code>
+            <p>例如：<code>http://your-server:7860/?text=你好世界&speaker=京京</code></p>
+            <p><strong>📂 可用配置文件：</strong> 京京, 广末凉子, 苏瑶, 走心女主播</p>
+        </div>
+        <div class="form-group">
+            <label>输入文本：</label>
+            <textarea id="text" rows="3" placeholder="请输入要合成语音的文本..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>说话人配置：</label>
+            <input type="text" id="speaker" value="京京" placeholder="配置文件名，如：京京">
+        </div>
+        <button onclick="generate()">🎵 生成语音</button>
+        <div id="result"></div>
+    </div>
+    <script>
+        async function generate() {
+            const text = document.getElementById('text').value;
+            const speaker = document.getElementById('speaker').value;
+            const result = document.getElementById('result');
+            
+            if (!text) {
+                result.innerHTML = '<p style="color:red;">请输入文本</p>';
+                return;
+            }
+            
+            result.innerHTML = '<p>⏳ 正在生成...</p>';
+            
+            try {
+                const url = '/?text=' + encodeURIComponent(text) + '&speaker=' + encodeURIComponent(speaker);
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    const error = await response.text();
+                    result.innerHTML = '<p style="color:red;">❌ 错误: ' + error + '</p>';
+                    return;
+                }
+                
+                const blob = await response.blob();
+                const audioUrl = URL.createObjectURL(blob);
+                result.innerHTML = '<audio controls src="' + audioUrl + '"></audio>';
+            } catch (e) {
+                result.innerHTML = '<p style="color:red;">❌ 错误: ' + e.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>"""
+
+        logger.info(f"API请求: text='{text[:50]}...' speaker='{speaker}'")
+
+        config_data, msg = load_config(speaker)
+        if config_data is None:
+            logger.warning(f"配置 '{speaker}' 不存在，使用默认参数")
+            config_data = {
+                "prompt_audio": None,
+                "prompt_text": None,
+                "emotion": None,
+                "dialect": None,
+                "style": None,
+                "voice_description": None,
+                "speech_speed": 1.0,
+                "pitch": 1.0,
+                "volume": 1.0,
+                "max_decode_steps": 200,
+                "cfg": 2.0,
+                "sigma": 0.25,
+                "temperature": 0.0,
+            }
+
+        instruction = {}
+        if config_data.get("emotion"):
+            instruction["情感"] = config_data["emotion"]
+        if config_data.get("dialect"):
+            instruction["方言"] = config_data["dialect"]
+        if config_data.get("style"):
+            instruction["风格"] = config_data["style"]
+
+        output_path = os.path.join(OUTPUT_DIR, f"api_{uuid.uuid4().hex}.wav")
+
+        try:
+            waveform = model.speech_generation(
+                prompt="Please generate speech based on the following description.\n",
+                text=text,
+                use_spk_emb=config_data.get("prompt_audio") is not None,
+                use_zero_spk_emb=config_data.get("prompt_audio") is None,
+                instruction=instruction if instruction else None,
+                prompt_wav_path=config_data.get("prompt_audio"),
+                prompt_text=config_data.get("prompt_text"),
+                max_decode_steps=config_data.get("max_decode_steps", 200),
+                cfg=config_data.get("cfg", 2.0),
+                sigma=config_data.get("sigma", 0.25),
+                temperature=config_data.get("temperature", 0.0),
+                output_wav_path=output_path,
+            )
+            logger.info(f"生成成功: {output_path}")
+            return send_file(output_path, mimetype="audio/wav", as_attachment=True)
+        except Exception as e:
+            logger.error(f"生成失败: {e}")
+            return f"生成失败: {str(e)}", 500
+
+    return app
+
+
 if __name__ == "__main__":
     model_path = os.environ.get("MODEL_PATH", "./models/Ming-omni-tts-0.5B")
     port = int(os.environ.get("PORT", 7860))
     load_model = os.environ.get("LOAD_MODEL", "true").lower() == "true"
 
-    demo = create_webui(model_path, load_model=load_model)
-    demo.launch(server_name="0.0.0.0", server_port=port, share=False)
+    if load_model:
+        load_model_fn(model_path)
+
+    demo = create_webui(model_path, load_model=False, external_model=model)
+
+    from werkzeug.serving import run_simple
+    import threading
+
+    def run_flask():
+        flask_app = create_api(model)
+        run_simple("0.0.0.0", port, flask_app, use_reloader=False, use_debugger=False)
+
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+
+    gradio_port = port + 1
+
+    print(f"\n{'=' * 60}")
+    print(f"🎤 Ming-Omni-TTS 服务已启动!")
+    print(f"{'=' * 60}")
+    print(f"📡 API 服务:   http://localhost:{port}/")
+    print(f"   调用示例: http://localhost:{port}/?text=你好世界&speaker=京京")
+    print(f"🎨 Gradio:    http://localhost:{gradio_port}/")
+    print(f"{'=' * 60}\n")
+
+    demo.launch(server_name="0.0.0.0", server_port=gradio_port, share=False)

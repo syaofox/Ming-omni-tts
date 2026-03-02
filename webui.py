@@ -451,63 +451,6 @@ def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
                     )
 
                     with gr.Group():
-                        gr.Markdown("#### 声音控制")
-                        emotion = gr.Dropdown(
-                            choices=[
-                                "无",
-                                "高兴",
-                                "悲伤",
-                                "愤怒",
-                                "惊讶",
-                                "恐惧",
-                                "厌恶",
-                            ],
-                            label="情感",
-                            value="无",
-                        )
-                        dialect = gr.Dropdown(
-                            choices=[
-                                "无",
-                                "普通话",
-                                "广粤话",
-                                "四川话",
-                                "东北话",
-                                "河南话",
-                            ],
-                            label="方言",
-                            value="无",
-                        )
-                        style = gr.Dropdown(
-                            choices=[
-                                "无",
-                                "正式",
-                                " casual",
-                                "新闻播报",
-                                "讲故事",
-                                "ASMR耳语",
-                            ],
-                            label="风格",
-                            value="无",
-                        )
-                        voice_description = gr.Textbox(
-                            label="音色描述 (可选)",
-                            placeholder="例如: 这是一位温柔的母亲声音，音色低沉浑厚，充满关爱",
-                            lines=3,
-                        )
-                        with gr.Accordion("音色描述示例", open=False):
-                            gr.Examples(
-                                examples=[
-                                    ["一位温柔的母亲声音，音色低沉浑厚，充满关爱"],
-                                    ["年轻的男性主播，声音清澈明亮，富有活力"],
-                                    ["成熟的男性嗓音，声线低沉，带有一点沙哑"],
-                                    ["可爱的小女孩声音，甜美清脆，充满元气"],
-                                    ["一位威严的皇后，声音沉稳大气，充满威压"],
-                                    ["ASMR耳语，气音重，音量极低，语速极慢"],
-                                ],
-                                inputs=voice_description,
-                            )
-
-                    with gr.Group():
                         gr.Markdown("#### 高级参数")
                         with gr.Row():
                             speech_speed = gr.Slider(
@@ -594,9 +537,65 @@ def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
                             lines=1,
                         )
 
+                with gr.Column(scale=1):
+                    gr.Markdown("### 声音控制")
+                    emotion = gr.Dropdown(
+                        choices=[
+                            "无",
+                            "高兴",
+                            "悲伤",
+                            "愤怒",
+                            "惊讶",
+                            "恐惧",
+                            "厌恶",
+                        ],
+                        label="情感",
+                        value="无",
+                    )
+                    dialect = gr.Dropdown(
+                        choices=[
+                            "无",
+                            "普通话",
+                            "广粤话",
+                            "四川话",
+                            "东北话",
+                            "河南话",
+                        ],
+                        label="方言",
+                        value="无",
+                    )
+                    style = gr.Dropdown(
+                        choices=[
+                            "无",
+                            "正式",
+                            " casual",
+                            "新闻播报",
+                            "讲故事",
+                            "ASMR耳语",
+                        ],
+                        label="风格",
+                        value="无",
+                    )
+                    voice_description = gr.Textbox(
+                        label="音色描述 (可选)",
+                        placeholder="例如: 这是一位温柔的母亲声音，音色低沉浑厚，充满关爱",
+                        lines=3,
+                    )
+                    with gr.Accordion("音色描述示例", open=False):
+                        gr.Examples(
+                            examples=[
+                                ["一位温柔的母亲声音，音色低沉浑厚，充满关爱"],
+                                ["年轻的男性主播，声音清澈明亮，富有活力"],
+                                ["成熟的男性嗓音，声线低沉，带有一点沙哑"],
+                                ["可爱的小女孩声音，甜美清脆，充满元气"],
+                                ["一位威严的皇后，声音沉稳大气，充满威压"],
+                                ["ASMR耳语，气音重，音量极低，语速极慢"],
+                            ],
+                            inputs=voice_description,
+                        )
+
                     generate_btn = gr.Button("🎵 生成语音", variant="primary")
 
-                with gr.Column(scale=1):
                     gr.Markdown("### 生成结果")
                     output_audio = gr.Audio(
                         label="生成的音频",

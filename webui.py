@@ -594,6 +594,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         .drop-zone:hover, .drop-zone.dragover { border-color: #4CAF50; background: #f9f9f9; }
         .drop-zone input { display: none; }
         .drop-zone p { margin: 0; color: #666; font-size: 14px; }
+        .reset-btn { background: #9E9E9E; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 14px; margin-left: 5px; }
+        .reset-btn:hover { background: #757575; }
     </style>
 </head>
 <body>
@@ -630,50 +632,57 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     <div class="form-group">
                         <label>语速：</label>
                         <div class="slider-group">
-                            <input type="range" id="tts_speech_speed" min="0.5" max="2.0" step="0.1" value="1.0">
+                            <input type="range" id="tts_speech_speed" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
                             <span id="tts_speech_speed_val">1.0</span>
+                            <button type="button" class="reset-btn" onclick="resetSlider('tts_speech_speed')">↺</button>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>音高：</label>
                         <div class="slider-group">
-                            <input type="range" id="tts_pitch" min="0.5" max="2.0" step="0.1" value="1.0">
+                            <input type="range" id="tts_pitch" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
                             <span id="tts_pitch_val">1.0</span>
+                            <button type="button" class="reset-btn" onclick="resetSlider('tts_pitch')">↺</button>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>音量：</label>
                         <div class="slider-group">
-                            <input type="range" id="tts_volume" min="0.5" max="2.0" step="0.1" value="1.0">
+                            <input type="range" id="tts_volume" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
                             <span id="tts_volume_val">1.0</span>
+                            <button type="button" class="reset-btn" onclick="resetSlider('tts_volume')">↺</button>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>解码步数：</label>
                         <div class="slider-group">
-                            <input type="range" id="tts_max_decode_steps" min="100" max="500" step="50" value="200">
+                            <input type="range" id="tts_max_decode_steps" min="100" max="500" step="50" value="200" data-default="200">
                             <span id="tts_max_decode_steps_val">200</span>
+                            <button type="button" class="reset-btn" onclick="resetSlider('tts_max_decode_steps')">↺</button>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>CFG 强度：</label>
                         <div class="slider-group">
-                            <input type="range" id="tts_cfg" min="1.0" max="8.0" step="0.5" value="2.0">
+                            <input type="range" id="tts_cfg" min="1.0" max="8.0" step="0.5" value="2.0" data-default="2.0">
                             <span id="tts_cfg_val">2.0</span>
+                            <button type="button" class="reset-btn" onclick="resetSlider('tts_cfg')">↺</button>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Sigma：</label>
                         <div class="slider-group">
-                            <input type="range" id="tts_sigma" min="0.1" max="1.0" step="0.05" value="0.25">
+                            <input type="range" id="tts_sigma" min="0.1" max="1.0" step="0.05" value="0.25" data-default="0.25">
                             <span id="tts_sigma_val">0.25</span>
+                            <button type="button" class="reset-btn" onclick="resetSlider('tts_sigma')">↺</button>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Temperature：</label>
                         <div class="slider-group">
-                            <input type="range" id="tts_temperature" min="0.0" max="3.0" step="0.1" value="0.0">
+                            <input type="range" id="tts_temperature" min="0.0" max="3.0" step="0.1" value="0.0" data-default="0.0">
                             <span id="tts_temperature_val">0.0</span>
+                            <button type="button" class="reset-btn" onclick="resetSlider('tts_temperature')">↺</button>
                         </div>
                     </div>
                 </div>
@@ -1235,6 +1244,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 loadConfigList();
             } catch (e) {
                 document.getElementById('config_msg').textContent = '错误: ' + e.message;
+            }
+        }
+
+        function resetSlider(id) {
+            var slider = document.getElementById(id);
+            if (slider) {
+                var defaultValue = slider.dataset.default || slider.value;
+                slider.value = defaultValue;
+                var span = document.getElementById(id + '_val');
+                if (span) span.textContent = defaultValue;
             }
         }
 

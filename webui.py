@@ -190,6 +190,80 @@ class MingAudio:
             torchaudio.save(output_wav_path, waveform, sample_rate=self.sample_rate)
         return waveform
 
+    def speech_generation_batch(
+        self,
+        prompt,
+        text_list: list,
+        use_spk_emb=False,
+        use_zero_spk_emb=False,
+        instruction=None,
+        prompt_wav_path=None,
+        prompt_text=None,
+        max_decode_steps=200,
+        cfg=2.0,
+        sigma=0.25,
+        temperature=0,
+        output_wav_path=None,
+    ):
+        if prompt_wav_path is None:
+            prompt_waveform, prompt_text, spk_emb = None, None, None
+            if use_zero_spk_emb:
+                spk_emb = [
+                    torch.zeros(1, 192, device=self.device, dtype=torch.bfloat16)
+                ]
+        else:
+            paths = (
+                prompt_wav_path
+                if isinstance(prompt_wav_path, list)
+                else [prompt_wav_path]
+            )
+            processed_prompts = [
+                self.preprocess_one_prompt_wav(p, use_spk_emb) for p in paths
+            ]
+            waveforms_list, spk_emb = zip(*processed_prompts)
+            prompt_waveform = torch.cat(waveforms_list, dim=-1)
+            prompt_waveform = self.pad_waveform(prompt_waveform)
+            spk_emb = list(spk_emb)
+            if all([x is None for x in spk_emb]):
+                spk_emb = None
+
+        if instruction is not None:
+            import json
+
+            instruction = self.create_instruction(instruction)
+            instruction = json.dumps(instruction, ensure_ascii=False)
+
+        waveforms = []
+        for text in text_list:
+            spk_emb_copy = (
+                [se.clone() for se in spk_emb] if spk_emb is not None else None
+            )
+            waveform = self.model.generate(
+                prompt=prompt,
+                text=text,
+                spk_emb=spk_emb_copy,
+                instruction=instruction,
+                prompt_waveform=prompt_waveform,
+                prompt_text=prompt_text,
+                max_decode_steps=max_decode_steps,
+                cfg=cfg,
+                sigma=sigma,
+                temperature=temperature,
+                use_zero_spk_emb=use_zero_spk_emb,
+            )
+            waveforms.append(waveform)
+
+        final_waveform = torch.cat(waveforms, dim=-1)
+
+        if output_wav_path is not None:
+            output_dir = os.path.dirname(output_wav_path)
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+            torchaudio.save(
+                output_wav_path, final_waveform, sample_rate=self.sample_rate
+            )
+        return final_waveform
+
 
 model = None
 OUTPUT_DIR = "./output"
@@ -355,6 +429,11 @@ def generate_speech(
     if not text.strip():
         return None, "请输入文本内容"
 
+    text = text.replace("\r\n", "\n").replace("\r", "\n").strip()
+    text_list = [t.strip() for t in text.split("\n") if t.strip()]
+    if not text_list:
+        return None, "请输入文本内容"
+
     output_path = os.path.join(OUTPUT_DIR, "output.wav")
 
     use_spk_emb = prompt_audio is not None
@@ -400,21 +479,37 @@ def generate_speech(
         prompt = "Please generate speech based on the following description.\n"
 
     try:
-        waveform = model.speech_generation(
-            prompt=prompt,
-            text=text,
-            use_spk_emb=use_spk_emb,
-            use_zero_spk_emb=use_zero_spk_emb,
-            instruction=instruction if instruction else None,
-            prompt_wav_path=prompt_audio,
-            prompt_text=prompt_text if (prompt_audio and prompt_text) else None,
-            max_decode_steps=max_decode_steps,
-            cfg=cfg,
-            sigma=sigma,
-            temperature=temperature,
-            output_wav_path=output_path,
-        )
-        return output_path, "生成成功!"
+        if len(text_list) == 1:
+            waveform = model.speech_generation(
+                prompt=prompt,
+                text=text_list[0],
+                use_spk_emb=use_spk_emb,
+                use_zero_spk_emb=use_zero_spk_emb,
+                instruction=instruction if instruction else None,
+                prompt_wav_path=prompt_audio,
+                prompt_text=prompt_text if (prompt_audio and prompt_text) else None,
+                max_decode_steps=max_decode_steps,
+                cfg=cfg,
+                sigma=sigma,
+                temperature=temperature,
+                output_wav_path=output_path,
+            )
+        else:
+            waveform = model.speech_generation_batch(
+                prompt=prompt,
+                text_list=text_list,
+                use_spk_emb=use_spk_emb,
+                use_zero_spk_emb=use_zero_spk_emb,
+                instruction=instruction if instruction else None,
+                prompt_wav_path=prompt_audio,
+                prompt_text=prompt_text if (prompt_audio and prompt_text) else None,
+                max_decode_steps=max_decode_steps,
+                cfg=cfg,
+                sigma=sigma,
+                temperature=temperature,
+                output_wav_path=output_path,
+            )
+        return output_path, f"生成成功! (共 {len(text_list)} 段)"
     except Exception as e:
         logger.error(f"Generation failed: {e}")
         return None, f"生成失败: {str(e)}"
@@ -1079,24 +1174,43 @@ def create_api(model):
         if config_data.get("style"):
             instruction["风格"] = config_data["style"]
 
+        text = text.replace("\r\n", "\n").replace("\r", "\n").strip()
+        text_list = [t.strip() for t in text.split("\n") if t.strip()]
+
         output_path = os.path.join(OUTPUT_DIR, f"api_{uuid.uuid4().hex}.wav")
 
         try:
-            waveform = model.speech_generation(
-                prompt="Please generate speech based on the following description.\n",
-                text=text,
-                use_spk_emb=config_data.get("prompt_audio") is not None,
-                use_zero_spk_emb=config_data.get("prompt_audio") is None,
-                instruction=instruction if instruction else None,
-                prompt_wav_path=config_data.get("prompt_audio"),
-                prompt_text=config_data.get("prompt_text"),
-                max_decode_steps=config_data.get("max_decode_steps", 200),
-                cfg=config_data.get("cfg", 2.0),
-                sigma=config_data.get("sigma", 0.25),
-                temperature=config_data.get("temperature", 0.0),
-                output_wav_path=output_path,
-            )
-            logger.info(f"生成成功: {output_path}")
+            if len(text_list) == 1:
+                waveform = model.speech_generation(
+                    prompt="Please generate speech based on the following description.\n",
+                    text=text_list[0],
+                    use_spk_emb=config_data.get("prompt_audio") is not None,
+                    use_zero_spk_emb=config_data.get("prompt_audio") is None,
+                    instruction=instruction if instruction else None,
+                    prompt_wav_path=config_data.get("prompt_audio"),
+                    prompt_text=config_data.get("prompt_text"),
+                    max_decode_steps=config_data.get("max_decode_steps", 200),
+                    cfg=config_data.get("cfg", 2.0),
+                    sigma=config_data.get("sigma", 0.25),
+                    temperature=config_data.get("temperature", 0.0),
+                    output_wav_path=output_path,
+                )
+            else:
+                waveform = model.speech_generation_batch(
+                    prompt="Please generate speech based on the following description.\n",
+                    text_list=text_list,
+                    use_spk_emb=config_data.get("prompt_audio") is not None,
+                    use_zero_spk_emb=config_data.get("prompt_audio") is None,
+                    instruction=instruction if instruction else None,
+                    prompt_wav_path=config_data.get("prompt_audio"),
+                    prompt_text=config_data.get("prompt_text"),
+                    max_decode_steps=config_data.get("max_decode_steps", 200),
+                    cfg=config_data.get("cfg", 2.0),
+                    sigma=config_data.get("sigma", 0.25),
+                    temperature=config_data.get("temperature", 0.0),
+                    output_wav_path=output_path,
+                )
+            logger.info(f"生成成功: {output_path} (共 {len(text_list)} 段)")
             return send_file(output_path, mimetype="audio/wav", as_attachment=True)
         except Exception as e:
             logger.error(f"生成失败: {e}")

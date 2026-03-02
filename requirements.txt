@@ -17,6 +17,5 @@ jiwer==3.1.0
 rich
 flask>=2.0.0
 flask-cors>=3.0.0
-gradio
 onnxruntime
 werkzeug

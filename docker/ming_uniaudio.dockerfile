@@ -43,7 +43,6 @@ RUN pip install --no-cache-dir \
     onnxruntime \
     jiwer==3.1.0 \
     rich \
-    gradio \
     flask \
     flask-cors
 

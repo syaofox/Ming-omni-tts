@@ -224,3 +224,50 @@ Ming-omni-tts/
 
 - 始终使用 Docker 环境运行
 - 避免在宿主机直接安装依赖
+
+## WebUI 命令
+
+```bash
+# 启动 WebUI（需要 GPU + 模型文件）
+docker compose run --rm -p 7860:7860 ming-omni-tts python webui.py
+
+# 启动 WebUI（无模型测试模式）
+docker compose run --rm -p 7860:7860 -e LOAD_MODEL=false ming-omni-tts python webui.py
+
+# 环境变量
+# - MODEL_PATH: 模型路径 (默认: ./models/Ming-omni-tts-0.5B)
+# - PORT: 端口 (默认: 7860)
+# - LOAD_MODEL: 是否加载模型 (默认: true)
+```
+
+## 测试命令
+
+```bash
+# 运行完整测试（所有示例）
+docker compose run --rm ming-omni-tts python cookbooks/test.py
+
+# 运行单个测试用例
+docker compose run --rm ming-omni-tts python -c "
+import sys
+sys.path.insert(0, '.')
+exec('''
+from cookbooks.test import MingAudio
+model = MingAudio(\"./models/Ming-omni-tts-0.5B\")
+decode_args = {\"max_decode_steps\": 200, \"cfg\": 4.5, \"sigma\": 0.3, \"temperature\": 2.5}
+messages = {\"prompt\": \"Please generate audio events based on given text.\n\", \"text\": \"Thunder and a gentle rain\"}
+model.speech_generation(**messages, **decode_args, output_wav_path=\"output/tta.wav\")
+''')
+"
+```
+
+## Lint 命令
+
+```bash
+# Python 语法检查
+docker compose run --rm ming-omni-tts python -m py_compile <file.py>
+
+# ruff 检查
+docker compose run --rm ming-omni-tts pip install ruff && ruff check .
+
+# black 格式化检查
+docker compose run --rm ming-omni-tts pip install black && black --check .

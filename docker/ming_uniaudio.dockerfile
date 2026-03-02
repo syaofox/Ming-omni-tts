@@ -54,8 +54,11 @@ RUN pip install --no-cache-dir --no-build-isolation \
     x_transformers \
     torchdiffeq \
     torchtune \
-    torchao \
-    accelerate==1.3.0
+    torchao==0.13.0 \
+    accelerate==1.3.0 \
+    onnxruntime \
+    jiwer==3.1.0 \
+    rich
 
 ARG FLASH_ATTN_WHEEL=flash_attn-2.7.0.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 ARG FLASH_ATTN_URL=https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.0.post1/${FLASH_ATTN_WHEEL}

@@ -1,0 +1,24 @@
+services:
+  ming-omni-tts:
+    build:
+      context: .
+      dockerfile: docker/ming_uniaudio.dockerfile
+    container_name: ming-omni-tts
+    # runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - .:/app
+      - ./models:/app/models
+      - ./output:/app/output
+      - ./data:/app/data
+    working_dir: /app
+    stdin_open: true
+    tty: true

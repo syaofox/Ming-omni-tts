@@ -8,14 +8,10 @@ ENV LC_ALL=C.UTF-8
 
 RUN sed -i 's|http://archive.ubuntu.com/ubuntu|https://mirrors.aliyun.com/ubuntu|g' /etc/apt/sources.list && \
     sed -i 's|http://security.ubuntu.com/ubuntu|https://mirrors.aliyun.com/ubuntu|g' /etc/apt/sources.list && \
-    apt-get clean && \
-    apt-get update
-
-RUN apt-get update && \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
         git \
         wget \
-        vim \
         libsndfile1 \
         build-essential \
         python3-dev \
@@ -26,8 +22,8 @@ RUN apt-get update && \
 RUN ln -s /usr/bin/python3.11 /usr/bin/python && \
     ln -s /usr/bin/pip3.11 /usr/bin/pip
 
-RUN pip install --no-cache-dir --upgrade pip
-RUN pip config set global.index-url https://pypi.mirrors.ustc.edu.cn/simple/
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip config set global.index-url https://pypi.mirrors.ustc.edu.cn/simple/
 
 RUN pip install --no-cache-dir \
     tokenizers \
@@ -53,7 +49,7 @@ ARG FLASH_ATTN_WHEEL=flash_attn-2.7.0.post1+cu12torch2.5cxx11abiFALSE-cp311-cp31
 ARG FLASH_ATTN_URL=https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.0.post1/${FLASH_ATTN_WHEEL}
 RUN wget -q ${FLASH_ATTN_URL} -O /tmp/${FLASH_ATTN_WHEEL} && \
     pip install --no-cache-dir /tmp/${FLASH_ATTN_WHEEL} && \
-    rm /tmp/${FLASH_ATTN_WHEEL}
+    rm -rf /tmp/*
 
 ARG UID=1000
 ARG GID=1000

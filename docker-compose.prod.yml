@@ -1,0 +1,41 @@
+services:
+  ming-omni-tts-prod:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.prod
+      args:
+        - UID=${UID:-1000}
+        - GID=${GID:-1000}
+    container_name: ming-omni-tts-prod
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: ${GPU_COUNT:-1}
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-0}
+      - MODEL_PATH=/app/models/Ming-omni-tts-0.5B
+      - WEBUI_PORT=7860
+      - API_PORT=7861
+    volumes:
+      - ./models:/app/models
+      - ./output:/app/output
+      - ./saved_configs:/app/saved_configs
+    ports:
+      - "7860:7860"
+      - "7861:7861"
+    restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
+    command: >
+      sh -c "
+        python webui.py &
+        WEBUI_PID=$$!
+        echo 'WebUI started with PID: '$$WEBUI_PID
+        sleep 8
+        PORT=7861 python api.py &
+        API_PID=$$!
+        echo 'API started with PID: '$$API_PID
+        wait
+      "

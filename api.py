@@ -19,6 +19,7 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 
 from spkemb_extractor import SpkembExtractor
+from inference import generate_speech as _generate_speech
 
 OUTPUT_DIR = "./output"
 CONFIG_DIR = "./saved_configs"
@@ -252,51 +253,33 @@ def create_api(model):
                 "temperature": 0.0,
             }
 
-        instruction = {}
-        if config_data.get("emotion"):
-            instruction["情感"] = config_data["emotion"]
-        if config_data.get("dialect"):
-            instruction["方言"] = config_data["dialect"]
-        if config_data.get("style"):
-            instruction["风格"] = config_data["style"]
-
-        text = text.replace("\r\n", "\n").replace("\r", "\n").strip()
-        text_list = [t.strip() for t in text.split("\n") if t.strip()]
-
         output_path = os.path.join(OUTPUT_DIR, f"api_{uuid.uuid4().hex}.wav")
 
         try:
-            if len(text_list) == 1:
-                waveform = model.speech_generation(
-                    prompt="Please generate speech based on the following description.\n",
-                    text=text_list[0],
-                    use_spk_emb=config_data.get("prompt_audio") is not None,
-                    use_zero_spk_emb=config_data.get("prompt_audio") is None,
-                    instruction=instruction if instruction else None,
-                    prompt_wav_path=config_data.get("prompt_audio"),
-                    prompt_text=config_data.get("prompt_text"),
-                    max_decode_steps=config_data.get("max_decode_steps", 200),
-                    cfg=config_data.get("cfg", 2.0),
-                    sigma=config_data.get("sigma", 0.25),
-                    temperature=config_data.get("temperature", 0.0),
-                    output_wav_path=output_path,
-                )
-            else:
-                waveform = model.speech_generation_batch(
-                    prompt="Please generate speech based on the following description.\n",
-                    text_list=text_list,
-                    use_spk_emb=config_data.get("prompt_audio") is not None,
-                    use_zero_spk_emb=config_data.get("prompt_audio") is None,
-                    instruction=instruction if instruction else None,
-                    prompt_wav_path=config_data.get("prompt_audio"),
-                    prompt_text=config_data.get("prompt_text"),
-                    max_decode_steps=config_data.get("max_decode_steps", 200),
-                    cfg=config_data.get("cfg", 2.0),
-                    sigma=config_data.get("sigma", 0.25),
-                    temperature=config_data.get("temperature", 0.0),
-                    output_wav_path=output_path,
-                )
-            logger.info(f"生成成功: {output_path} (共 {len(text_list)} 段)")
+            result = _generate_speech(
+                model=model,
+                text=text,
+                task_type="语音合成 (TTS)",
+                prompt_audio=config_data.get("prompt_audio"),
+                prompt_text=config_data.get("prompt_text"),
+                emotion=config_data.get("emotion"),
+                dialect=config_data.get("dialect"),
+                style=config_data.get("style"),
+                speech_speed=config_data.get("speech_speed", 1.0),
+                pitch=config_data.get("pitch", 1.0),
+                volume=config_data.get("volume", 1.0),
+                max_decode_steps=config_data.get("max_decode_steps", 200),
+                cfg=config_data.get("cfg", 2.0),
+                sigma=config_data.get("sigma", 0.25),
+                temperature=config_data.get("temperature", 0.0),
+                voice_description=config_data.get("voice_description"),
+                output_path=output_path,
+            )
+
+            if result[0] is None:
+                return f"生成失败: {result[1]}", 500
+
+            logger.info(f"生成成功: {output_path}")
             return send_file(output_path, mimetype="audio/wav", as_attachment=True)
         except Exception as e:
             logger.error(f"生成失败: {e}")

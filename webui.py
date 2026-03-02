@@ -29,6 +29,8 @@ from api import (
     create_api,
 )
 
+from inference import generate_speech as _generate_speech
+
 warnings.filterwarnings("ignore")
 
 
@@ -300,101 +302,26 @@ def generate_speech(
     task_type,
     voice_description,
 ):
-    global model
-
-    if not prompt_text:
-        prompt_text = None
-
-    if model is None:
-        return None, "请先加载模型"
-
-    if not text.strip():
-        return None, "请输入文本内容"
-
-    text = text.replace("\r\n", "\n").replace("\r", "\n").strip()
-    text_list = [t.strip() for t in text.split("\n") if t.strip()]
-    if not text_list:
-        return None, "请输入文本内容"
-
     output_path = os.path.join(OUTPUT_DIR, "output.wav")
-
-    use_spk_emb = prompt_audio is not None
-    use_zero_spk_emb = prompt_audio is None
-
-    instruction = {}
-    # 音色描述优先：如果用户输入了音色描述，其他控制参数作为补充
-    if voice_description and voice_description.strip():
-        instruction["音色描述"] = voice_description.strip()
-        if emotion and emotion != "无":
-            instruction["情感"] = emotion
-        if dialect and dialect != "无":
-            instruction["方言"] = dialect
-        if style and style != "无":
-            instruction["风格"] = style
-        if speech_speed and speech_speed != 1.0:
-            instruction["语速"] = speech_speed
-        if pitch and pitch != 1.0:
-            instruction["基频"] = pitch
-        if volume and volume != 1.0:
-            instruction["音量"] = volume
-    else:
-        if emotion and emotion != "无":
-            instruction["情感"] = emotion
-        if dialect and dialect != "无":
-            instruction["方言"] = dialect
-        if style and style != "无":
-            instruction["风格"] = style
-        if speech_speed and speech_speed != 1.0:
-            instruction["语速"] = speech_speed
-        if pitch and pitch != 1.0:
-            instruction["基频"] = pitch
-        if volume and volume != 1.0:
-            instruction["音量"] = volume
-
-    if task_type == "语音合成 (TTS)":
-        prompt = "Please generate speech based on the following description.\n"
-    elif task_type == "声音事件 (TTA)":
-        prompt = "Please generate audio events based on given text.\n"
-    elif task_type == "背景音乐 (BGM)":
-        prompt = "Please generate music based on the following description.\n"
-    else:
-        prompt = "Please generate speech based on the following description.\n"
-
-    try:
-        if len(text_list) == 1:
-            waveform = model.speech_generation(
-                prompt=prompt,
-                text=text_list[0],
-                use_spk_emb=use_spk_emb,
-                use_zero_spk_emb=use_zero_spk_emb,
-                instruction=instruction if instruction else None,
-                prompt_wav_path=prompt_audio,
-                prompt_text=prompt_text if (prompt_audio and prompt_text) else None,
-                max_decode_steps=max_decode_steps,
-                cfg=cfg,
-                sigma=sigma,
-                temperature=temperature,
-                output_wav_path=output_path,
-            )
-        else:
-            waveform = model.speech_generation_batch(
-                prompt=prompt,
-                text_list=text_list,
-                use_spk_emb=use_spk_emb,
-                use_zero_spk_emb=use_zero_spk_emb,
-                instruction=instruction if instruction else None,
-                prompt_wav_path=prompt_audio,
-                prompt_text=prompt_text if (prompt_audio and prompt_text) else None,
-                max_decode_steps=max_decode_steps,
-                cfg=cfg,
-                sigma=sigma,
-                temperature=temperature,
-                output_wav_path=output_path,
-            )
-        return output_path, f"生成成功! (共 {len(text_list)} 段)"
-    except Exception as e:
-        logger.error(f"Generation failed: {e}")
-        return None, f"生成失败: {str(e)}"
+    return _generate_speech(
+        model=model,
+        text=text,
+        task_type=task_type,
+        prompt_audio=prompt_audio,
+        prompt_text=prompt_text,
+        emotion=emotion,
+        dialect=dialect,
+        style=style,
+        speech_speed=speech_speed,
+        pitch=pitch,
+        volume=volume,
+        max_decode_steps=max_decode_steps,
+        cfg=cfg,
+        sigma=sigma,
+        temperature=temperature,
+        voice_description=voice_description,
+        output_path=output_path,
+    )
 
 
 def create_webui(

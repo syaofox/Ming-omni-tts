@@ -105,6 +105,8 @@ class MingAudio:
             return None, None
 
         waveform, sr = torchaudio.load(waveform_path)
+        if waveform.shape[0] > 1:
+            waveform = waveform.mean(dim=0, keepdim=True)
         waveform1 = waveform.clone()
         if sr != self.sample_rate:
             waveform = torchaudio.transforms.Resample(
@@ -201,6 +203,7 @@ def load_model_fn(model_path):
 def generate_speech(
     text,
     prompt_audio,
+    prompt_text,
     emotion,
     dialect,
     style,
@@ -214,6 +217,9 @@ def generate_speech(
     task_type,
 ):
     global model, OUTPUT_DIR
+
+    if not prompt_text:
+        prompt_text = None
 
     if model is None:
         return None, "请先加载模型"
@@ -233,6 +239,12 @@ def generate_speech(
         instruction["方言"] = dialect
     if style and style != "无":
         instruction["风格"] = style
+    if speech_speed and speech_speed != 1.0:
+        instruction["语速"] = speech_speed
+    if pitch and pitch != 1.0:
+        instruction["基频"] = pitch
+    if volume and volume != 1.0:
+        instruction["音量"] = volume
 
     if task_type == "语音合成 (TTS)":
         prompt = "Please generate speech based on the following description.\n"
@@ -251,6 +263,7 @@ def generate_speech(
             use_zero_spk_emb=use_zero_spk_emb,
             instruction=instruction if instruction else None,
             prompt_wav_path=prompt_audio,
+            prompt_text=prompt_text if (prompt_audio and prompt_text) else None,
             max_decode_steps=max_decode_steps,
             cfg=cfg,
             sigma=sigma,
@@ -289,6 +302,12 @@ def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
                     prompt_audio = gr.Audio(
                         label="参考音频 (可选)",
                         type="filepath",
+                    )
+
+                    prompt_text = gr.Textbox(
+                        label="参考文本 (可选)",
+                        placeholder="参考音频对应的文本...",
+                        lines=2,
                     )
 
                     with gr.Group():
@@ -407,6 +426,7 @@ def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
                 inputs=[
                     input_text,
                     prompt_audio,
+                    prompt_text,
                     emotion,
                     dialect,
                     style,
@@ -484,6 +504,7 @@ def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
                 fn=generate_speech,
                 inputs=[
                     input_text_tta,
+                    gr.State(None),
                     gr.State(None),
                     gr.State("无"),
                     gr.State("无"),
@@ -571,6 +592,7 @@ def create_webui(model_path="./models/Ming-omni-tts-0.5B", load_model=True):
 
                 return generate_speech(
                     text,
+                    None,
                     None,
                     "无",
                     "无",

@@ -238,8 +238,11 @@ def save_config(
     config_name = config_name.strip()
     config_path = os.path.join(CONFIG_DIR, config_name)
 
-    if os.path.exists(config_path):
-        return f"配置 '{config_name}' 已存在，请使用其他名称", False
+    is_overwrite = os.path.exists(config_path)
+    if is_overwrite:
+        import shutil
+
+        shutil.rmtree(config_path)
 
     os.makedirs(config_path, exist_ok=True)
 
@@ -269,7 +272,12 @@ def save_config(
     with open(config_file, "w", encoding="utf-8") as f:
         json.dump(config_data, f, ensure_ascii=False, indent=2)
 
-    return f"配置 '{config_name}' 保存成功!", True
+    msg = (
+        f"配置 '{config_name}' 已覆盖"
+        if is_overwrite
+        else f"配置 '{config_name}' 保存成功!"
+    )
+    return msg, True
 
 
 def get_config_list():

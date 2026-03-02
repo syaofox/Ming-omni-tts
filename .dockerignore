@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+.ruff_cache
+
+# Documentation
+README.md
+AGENTS.md
+LICENSE
+LEGAL.md
+
+# Docker
+docker/
+docker-compose*.yml
+
+# Development files
+cookbooks/
+output/
+figures/
+data/
+saved_configs/
+
+# Models (should be mounted via volume)
+models/
+
+# Config files (dependencies already in Dockerfile)
+requirements.txt

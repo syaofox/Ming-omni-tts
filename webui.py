@@ -973,10 +973,22 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         async function generateTTS() {
             var btn = document.getElementById('tts_generate');
             btn.disabled = true;
-            btn.textContent = '生成中...';
+            
+            var startTime = Date.now();
+            var timer = null;
+            var resultDiv = document.getElementById('tts_result');
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<p>生成中... <span id="tts_elapsed">0.0</span> 秒</span></p>';
+            
+            timer = setInterval(function() {
+                var elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                var elapsedSpan = document.getElementById('tts_elapsed');
+                if (elapsedSpan) elapsedSpan.textContent = elapsed;
+            }, 100);
 
             var text = document.getElementById('tts_text').value;
             if (!text) {
+                clearInterval(timer);
                 showResult('tts', false, '请输入文本');
                 btn.disabled = false;
                 btn.textContent = '生成语音';
@@ -995,12 +1007,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     body: JSON.stringify(data)
                 });
                 var result = await resp.json();
+                clearInterval(timer);
+                var totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
                 if (result.success) {
-                    showResult('tts', true, result.message, result.audio_url);
+                    showResult('tts', true, result.message + ' (用时: ' + totalTime + '秒)', result.audio_url);
                 } else {
                     showResult('tts', false, result.message);
                 }
             } catch (e) {
+                clearInterval(timer);
                 showResult('tts', false, '错误: ' + e.message);
             }
 
@@ -1009,8 +1024,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
 
         async function generateTTA() {
+            var startTime = Date.now();
+            var timer = null;
+            var resultDiv = document.getElementById('tta_result');
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<p>生成中... <span id="tta_elapsed">0.0</span> 秒</p>';
+            
+            timer = setInterval(function() {
+                var elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                var elapsedSpan = document.getElementById('tta_elapsed');
+                if (elapsedSpan) elapsedSpan.textContent = elapsed;
+            }, 100);
+
             var text = document.getElementById('tta_text').value;
             if (!text) {
+                clearInterval(timer);
                 showResult('tta', false, '请输入描述');
                 return;
             }
@@ -1031,17 +1059,32 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     body: JSON.stringify(data)
                 });
                 var result = await resp.json();
+                clearInterval(timer);
+                var totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
                 if (result.success) {
-                    showResult('tta', true, result.message, result.audio_url);
+                    showResult('tta', true, result.message + ' (用时: ' + totalTime + '秒)', result.audio_url);
                 } else {
                     showResult('tta', false, result.message);
                 }
             } catch (e) {
+                clearInterval(timer);
                 showResult('tta', false, '错误: ' + e.message);
             }
         }
 
         async function generateBGM() {
+            var startTime = Date.now();
+            var timer = null;
+            var resultDiv = document.getElementById('bgm_result');
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<p>生成中... <span id="bgm_elapsed">0.0</span> 秒</p>';
+            
+            timer = setInterval(function() {
+                var elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                var elapsedSpan = document.getElementById('bgm_elapsed');
+                if (elapsedSpan) elapsedSpan.textContent = elapsed;
+            }, 100);
+
             var genre = document.getElementById('bgm_genre').value;
             var mood = document.getElementById('bgm_mood').value;
             var instrument = document.getElementById('bgm_instrument').value;
@@ -1077,12 +1120,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     body: JSON.stringify(data)
                 });
                 var result = await resp.json();
+                clearInterval(timer);
+                var totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
                 if (result.success) {
-                    showResult('bgm', true, result.message, result.audio_url);
+                    showResult('bgm', true, result.message + ' (用时: ' + totalTime + '秒)', result.audio_url);
                 } else {
                     showResult('bgm', false, result.message);
                 }
             } catch (e) {
+                clearInterval(timer);
                 showResult('bgm', false, '错误: ' + e.message);
             }
         }

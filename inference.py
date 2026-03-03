@@ -14,8 +14,11 @@ def build_instruction(
     speech_speed=None,
     pitch=None,
     volume=None,
+    ip=None,
 ):
     instruction = {}
+    if ip and ip.strip():
+        instruction["IP"] = ip.strip()
     if voice_description and voice_description.strip():
         instruction["音色描述"] = voice_description.strip()
         if emotion and emotion != "无":
@@ -80,6 +83,7 @@ def generate_speech(
     sigma=0.25,
     temperature=0.0,
     voice_description=None,
+    ip=None,
     output_path=None,
 ):
     if not prompt_text:
@@ -110,6 +114,7 @@ def generate_speech(
         speech_speed=speech_speed,
         pitch=pitch,
         volume=volume,
+        ip=ip,
     )
 
     prompt = get_prompt_by_task_type(task_type)

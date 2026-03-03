@@ -410,10 +410,27 @@ def create_webui(
     app = Flask(__name__)
     CORS(app)
 
+    def load_ip_data():
+        ip_data_path = os.path.join(current_dir, "cookbooks", "ip_data.json")
+        if os.path.exists(ip_data_path):
+            with open(ip_data_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return {}
+
     @app.route("/")
     def index():
         config_list = get_config_list()
         return render_template_string(HTML_TEMPLATE, config_list=config_list)
+
+    @app.route("/ip_list", methods=["GET"])
+    def list_ip():
+        ip_data = load_ip_data()
+        return jsonify(list(ip_data.keys()))
+
+    @app.route("/ip_data", methods=["GET"])
+    def get_ip_data():
+        ip_data = load_ip_data()
+        return jsonify(ip_data)
 
     @app.route("/configs", methods=["GET"])
     def list_configs():
@@ -489,6 +506,7 @@ def create_webui(
         sigma = float(data.get("sigma", 0.25))
         temperature = float(data.get("temperature", 0.0))
         voice_description = data.get("voice_description")
+        ip = data.get("ip")
 
         from inference import generate_speech as _generate_speech
 
@@ -512,6 +530,7 @@ def create_webui(
             sigma=sigma,
             temperature=temperature,
             voice_description=voice_description,
+            ip=ip,
             output_path=output_path,
         )
 
@@ -750,6 +769,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                         </select>
                     </div>
                     <div class="form-group">
+                        <label>选择内置音色 (IP)：</label>
+                        <select id="tts_ip_select" onchange="selectIP(this.value)">
+                            <option value="">请选择内置音色...</option>
+                        </select>
+                        <input type="hidden" id="tts_ip">
+                    </div>
+                    <div class="form-group">
                         <label>音色描述 (可选)：</label>
                         <textarea id="tts_voice_description" rows="3" placeholder="例如: 这是一位温柔的母亲声音，音色低沉浑厚，充满关爱"></textarea>
                         <div class="examples">
@@ -904,6 +930,44 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
 
     <script>
+        var ipData = {};
+
+        // Load IP data from API
+        async function loadIPData() {
+            try {
+                var resp = await fetch('/ip_data');
+                ipData = await resp.json();
+                initIPSelect();
+            } catch (e) {
+                console.error('Failed to load IP data:', e);
+            }
+        }
+
+        // Populate IP select dropdown
+        function initIPSelect() {
+            var select = document.getElementById('tts_ip_select');
+            var ips = Object.keys(ipData).sort();
+            ips.forEach(function(ip) {
+                var option = document.createElement('option');
+                option.value = ip;
+                option.textContent = ip;
+                select.appendChild(option);
+            });
+        }
+
+        // Handle IP selection
+        function selectIP(ip) {
+            if (ip && ipData[ip]) {
+                document.getElementById('tts_ip').value = ip;
+                document.getElementById('tts_voice_description').value = ipData[ip];
+            } else {
+                document.getElementById('tts_ip').value = '';
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', loadIPData);
+
         // Drop zone drag events
         var dropZone = document.getElementById('tts_drop_zone');
         var fileInput = document.getElementById('tts_prompt_audio');
@@ -988,6 +1052,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 sigma: document.getElementById(prefix + '_sigma') ? parseFloat(document.getElementById(prefix + '_sigma').value) : 0.25,
                 temperature: document.getElementById(prefix + '_temperature') ? parseFloat(document.getElementById(prefix + '_temperature').value) : 0.0,
                 voice_description: document.getElementById(prefix + '_voice_description') ? document.getElementById(prefix + '_voice_description').value : null,
+                ip: document.getElementById(prefix + '_ip') ? document.getElementById(prefix + '_ip').value : null,
             };
         }
 

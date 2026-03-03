@@ -13,8 +13,6 @@ from transformers import AutoTokenizer
 from flask import Flask, request, send_file, jsonify, render_template_string
 from flask_cors import CORS
 from loguru import logger
-from pypinyin import lazy_pinyin
-import opencc
 
 warnings.filterwarnings("ignore")
 
@@ -22,159 +20,22 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)
 
+from common import (
+    OUTPUT_DIR,
+    CONFIG_DIR,
+    UPLOAD_DIR,
+    get_pinyin,
+    get_pinyin_initials,
+    to_traditional,
+    save_config,
+    get_config_list,
+    load_config,
+    delete_config,
+)
+
 from modeling_bailingmm import BailingMMNativeForConditionalGeneration
 from sentence_manager.sentence_manager import SentenceNormalizer
 from spkemb_extractor import SpkembExtractor
-
-OUTPUT_DIR = "./output"
-CONFIG_DIR = "./saved_configs"
-UPLOAD_DIR = "./uploads"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(CONFIG_DIR, exist_ok=True)
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-opencc_converter = opencc.OpenCC("s2t")
-
-
-def get_pinyin(text):
-    if not text:
-        return ""
-    return "".join(lazy_pinyin(text))
-
-
-def get_pinyin_initials(text):
-    if not text:
-        return ""
-    pinyin_list = lazy_pinyin(text)
-    return "".join([p[0] if p else "" for p in pinyin_list])
-
-
-def to_traditional(text):
-    if not text:
-        return text
-    return opencc_converter.convert(text)
-
-
-def to_simplified(text):
-    if not text:
-        return text
-    return opencc.convert(text)
-
-
-def copy_audio_to_config_dir(audio_path, config_name):
-    if audio_path is None:
-        return None
-    import shutil
-
-    config_audio_dir = os.path.join(CONFIG_DIR, config_name, "audio")
-    os.makedirs(config_audio_dir, exist_ok=True)
-    audio_ext = os.path.splitext(audio_path)[1]
-    dest_path = os.path.join(config_audio_dir, f"ref_audio{audio_ext}")
-    shutil.copy2(audio_path, dest_path)
-    return dest_path
-
-
-def save_config(
-    config_name,
-    prompt_audio,
-    prompt_text,
-    emotion,
-    dialect,
-    style,
-    voice_description,
-    speech_speed,
-    pitch,
-    volume,
-    max_decode_steps,
-    cfg,
-    sigma,
-    temperature,
-):
-    import shutil
-
-    if not config_name or not config_name.strip():
-        return "请输入配置名称", False
-
-    config_name = config_name.strip()
-    config_path = os.path.join(CONFIG_DIR, config_name)
-
-    is_overwrite = os.path.exists(config_path)
-    if is_overwrite:
-        shutil.rmtree(config_path)
-
-    os.makedirs(config_path, exist_ok=True)
-
-    copied_audio = copy_audio_to_config_dir(prompt_audio, config_name)
-
-    config_data = {
-        "name": config_name,
-        "task_type": "TTS",
-        "prompt_audio": copied_audio,
-        "prompt_text": prompt_text,
-        "emotion": emotion,
-        "dialect": dialect,
-        "style": style,
-        "voice_description": voice_description,
-        "speech_speed": speech_speed,
-        "pitch": pitch,
-        "volume": volume,
-        "max_decode_steps": max_decode_steps,
-        "cfg": cfg,
-        "sigma": sigma,
-        "temperature": temperature,
-    }
-
-    config_file = os.path.join(config_path, "config.json")
-    with open(config_file, "w", encoding="utf-8") as f:
-        json.dump(config_data, f, ensure_ascii=False, indent=2)
-
-    msg = (
-        f"配置 '{config_name}' 已覆盖"
-        if is_overwrite
-        else f"配置 '{config_name}' 保存成功!"
-    )
-    return msg, True
-
-
-def get_config_list():
-    if not os.path.exists(CONFIG_DIR):
-        return []
-    configs = []
-    for item in os.listdir(CONFIG_DIR):
-        item_path = os.path.join(CONFIG_DIR, item)
-        if os.path.isdir(item_path):
-            config_file = os.path.join(item_path, "config.json")
-            if os.path.exists(config_file):
-                configs.append(item)
-    return sorted(configs)
-
-
-def load_config(config_name):
-    if not config_name:
-        return None, "请选择要加载的配置"
-
-    config_path = os.path.join(CONFIG_DIR, config_name, "config.json")
-    if not os.path.exists(config_path):
-        return None, f"配置 '{config_name}' 不存在"
-
-    with open(config_path, "r", encoding="utf-8") as f:
-        config_data = json.load(f)
-
-    return config_data, "配置加载成功"
-
-
-def delete_config(config_name):
-    import shutil
-
-    if not config_name:
-        return "请选择要删除的配置", False
-
-    config_path = os.path.join(CONFIG_DIR, config_name)
-    if not os.path.exists(config_path):
-        return f"配置 '{config_name}' 不存在", False
-
-    shutil.rmtree(config_path)
-    return f"配置 '{config_name}' 已删除", True
 
 
 class MingAudio:
@@ -1018,7 +879,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <script>
         var ipData = {};
 
-        // Load IP data from API
         async function loadIPData() {
             try {
                 var resp = await fetch('/ip_data');
@@ -1029,7 +889,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             }
         }
 
-        // IP data and dropdown handling
         var ipList = [];
         
         function initIPSelect() {
@@ -1120,7 +979,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             }
         });
 
-        // Config data and dropdown handling
         var configList = [];
         var configDataList = [];
         
@@ -1184,7 +1042,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             showConfigDropdown(this.value);
         });
 
-        // Handle IP selection
         function selectIP(ip) {
             if (ip && ipData[ip]) {
                 document.getElementById('tts_ip').value = ip;
@@ -1194,10 +1051,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             }
         }
 
-        // Initialize on page load
         document.addEventListener('DOMContentLoaded', loadIPData);
 
-        // Drop zone drag events
         var dropZone = document.getElementById('tts_drop_zone');
         var fileInput = document.getElementById('tts_prompt_audio');
         
@@ -1225,7 +1080,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             }
         });
         
-        // Handle file input change
         fileInput.addEventListener('change', function() {
             if (this.files && this.files[0]) {
                 var file = this.files[0];
@@ -1235,7 +1089,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             }
         });
         
-        // Slider value display
         document.querySelectorAll('input[type="range"]').forEach(function(slider) {
             slider.addEventListener('input', function() {
                 var span = document.getElementById(this.id + '_val');
@@ -1463,7 +1316,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             }
         }
 
-        // Config management
         var configDataList = [];
         
         async function loadConfigList() {
@@ -1523,7 +1375,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     var data = result.data;
                     document.getElementById('tts_prompt_text').value = data.prompt_text || '';
                     
-                    // 显示已保存的音频
                     var audioDisplay = document.getElementById('tts_prompt_audio_display');
                     if (data.prompt_audio) {
                         audioDisplay.innerHTML = '<audio controls src="/config_audio/' + encodeURIComponent(data.name) + '"></audio><p style="font-size:12px;color:#666;">已保存的参考音频(' + data.name + ')</p>';
@@ -1591,7 +1442,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             }
         }
 
-        // Init
         loadConfigList();
     </script>
 </body>

@@ -16,6 +16,8 @@ RUN apt-get update && \
         libsndfile1 \
         build-essential \
         python3-dev \
+        nodejs \
+        npm \
         && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -61,5 +63,11 @@ RUN groupadd -g ${GID} appgroup && \
     useradd -m -u ${UID} -g ${GID} -s /bin/bash appuser
 
 WORKDIR /app
+
+RUN npm install -g opencode-ai
+
+# COPY AGENTS-container.md /app/AGENTS.md
+
+RUN opencode --version
 
 CMD ["/bin/bash"]

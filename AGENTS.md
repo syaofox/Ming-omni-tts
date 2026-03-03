@@ -2,64 +2,28 @@
 # coding=utf-8
 # Copyright (c) Ant Group. All rights reserved.
 
-# AGENTS.md - Ming-omni-tts 开发指南
+# AGENTS.md - Ming-omni-tts Development Guide
 
-## 项目概述
-
-Ming-omni-tts 是一个高性能的统一音频生成模型，支持语音、音乐和声音的生成与控制。基于 PyTorch 2.6.0 和 CUDA 12.4 开发。
-
----
-
-## 环境设置
-
-### Docker 环境
-
-```bash
-# 开发环境构建
-docker compose -f docker-compose.dev.yml build
-
-# 生产环境构建
-docker compose -f docker-compose.prod.yml build
-```
-
-### 宿主机要求
-
-- NVIDIA GPU (RTX 3060+ 推荐)
-- Docker + NVIDIA Container Toolkit
-- 模型文件放在 `./models/Ming-omni-tts-0.5B` 目录
+## Project Overview
+Ming-omni-tts is a high-performance unified audio generation model supporting speech, music, and sound generation/control. Built on PyTorch 2.6.0 and CUDA 12.4.
 
 ---
 
-## 运行命令
+## Build & Test Commands
 
-### 开发模式
-
+### Local Development
 ```bash
-# 进入容器交互开发
-docker compose -f docker-compose.dev.yml run --rm ming-omni-tts
+# Syntax check a single Python file
+python -m py_compile <file.py>
 
-# 启动 WebUI（开发）
-docker compose -f docker-compose.dev.yml run --rm -p 7860:7860 ming-omni-tts python webui.py
-```
+# Install and run linting
+pip install ruff && ruff check .
 
-### 生产模式
+# Run the full test suite (cookbooks/test.py)
+python cookbooks/test.py
 
-```bash
-# 启动生产服务（WebUI + API）
-docker compose -f docker-compose.prod.yml up -d
-
-# 查看日志
-docker compose -f docker-compose.prod.yml logs -f
-```
-
-### 运行测试
-
-```bash
-# 完整测试
-docker compose -f docker-compose.dev.yml run --rm ming-omni-tts python cookbooks/test.py
-
-# 单个测试用例
-docker compose -f docker-compose.dev.yml run --rm ming-omni-tts python -c "
+# Run a single test case inline
+python -c "
 import sys; sys.path.insert(0, '.')
 from webui import MingAudio
 model = MingAudio('./models/Ming-omni-tts-0.5B')
@@ -69,255 +33,133 @@ model.speech_generation(
     use_zero_spk_emb=True,
     output_wav_path='output/test.wav'
 )"
+
+# Start WebUI / API server
+python webui.py
+python api.py
 ```
 
-### Lint 检查
-
+### Docker Development
 ```bash
-# 语法检查
-docker compose -f docker-compose.dev.yml run --rm ming-omni-tts python -m py_compile <file.py>
-
-# ruff 检查（需安装）
+docker compose -f docker-compose.dev.yml build
+docker compose -f docker-compose.dev.yml run --rm ming-omni-tts python cookbooks/test.py
+docker compose -f docker-compose.dev.yml run --rm ming-omni-tts python -c "..."
 docker compose -f docker-compose.dev.yml run --rm ming-omni-tts pip install ruff && ruff check .
-
-# JavaScript 语法检查（使用 node）
-docker compose -f docker-compose.dev.yml run --rm ming-omni-tts bash -c "curl -s http://localhost:7860/ | sed -n 's/<script>//;s/<\\/script>//' > /tmp/test.js && node --check /tmp/test.js"
 ```
-
-### 环境变量
-
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| MODEL_PATH | ./models/Ming-omni-tts-0.5B | 模型路径 |
-| PORT | 7860 | 服务端口 |
-| LOAD_MODEL | true | 是否加载模型 |
 
 ---
 
-## 代码风格指南
+## Code Style Guidelines
 
-### 文件头
-
+### File Header
 ```python
 #!/usr/bin/env python3
 # coding=utf-8
 # Copyright (c) Ant Group. All rights reserved.
 ```
 
-### 导入顺序
+### Import Order
+1. Python standard library (os, sys, json, typing, copy, re)
+2. Third-party libraries (torch, torchaudio, transformers, flask, loguru)
+3. Local modules (relative imports after sys.path manipulation)
 
-1. Python 标准库 (os, sys, json, typing)
-2. 第三方库 (torch, gradio, flask, loguru)
-3. 本地模块
+### Naming Conventions
+- **Classes**: PascalCase (`MingAudio`, `SpkembExtractor`)
+- **Functions/Variables**: snake_case (`seed_everything`, `model_path`)
+- **Constants**: UPPER_CASE (`MAX_DECODE_STEPS`, `OUTPUT_DIR`)
+- **Private Methods**: Leading underscore (`_extract_spk_embedding`)
+- **Instance Variables**: snake_case (`self.device`, `self.model`)
 
+### Type Annotations (required for new code)
 ```python
-import os
-import sys
-from typing import Dict, Optional, List
-
-import torch
-import gradio as gr
-from flask import Flask
-from loguru import logger
-
-from modeling_bailingmm import BailingMMNativeForConditionalGeneration
-```
-
-### 命名规范
-
-- **类名**: PascalCase (`MingAudio`, `SpkembExtractor`)
-- **函数/变量**: snake_case (`seed_everything`, `model_path`)
-- **常量**: 全大写 (`MAX_DECODE_STEPS`, `OUTPUT_DIR`)
-- **私有方法**: 前缀下划线 (`_extract_spk_embedding`)
-
-### 类型注解
-
-必须为新代码添加类型注解：
-
-```python
-def generate_speech(text: str, max_decode_steps: int = 200) -> torch.Tensor:
+def generate_speech(text: str, max_decode_steps: int = 200, cfg: float = 2.0) -> torch.Tensor:
     ...
 
 class MingAudio:
     def __init__(self, model_path: str, device: str = "cuda:0"):
         self.device: str = device
-        self.model: Optional[torch.nn.Module] = None
+        self.model: Optional[BailingMMNativeForConditionalGeneration] = None
 ```
 
-### 错误处理
-
-使用 loguru，不要使用 print：
-
+### Error Handling
+Use loguru, never print:
 ```python
 from loguru import logger
 
 try:
     result = model.generate(...)
 except Exception as e:
-    logger.error(f"生成失败: {e}")
+    logger.error(f"Generation failed: {e}")
     raise
 ```
 
-### 代码格式化
+### Code Formatting
+- Indentation: 4 spaces
+- Max line length: 120 characters
+- String quotes: Double quotes preferred
+- Blank lines: 2 between classes, 1 between functions
+- Docstrings: Required for all public methods
 
-- 缩进: 4 空格
-- 行长度: 最大 120 字符
-- 字符串引号: 双引号优先
-- 类之间空 2 行，函数之间空 1 行
-
-### 文档字符串
-
-为所有公共方法添加 docstring：
-
-```python
-class MingAudio:
-    """Ming-Omni-TTS 语音合成模型封装类"""
-    
-    def speech_generation(
-        self,
-        prompt: str,
-        text: str,
-        use_zero_spk_emb: bool = False,
-        max_decode_steps: int = 200,
-    ) -> torch.Tensor:
-        """
-        生成语音音频
-        
-        Args:
-            prompt: 提示词
-            text: 输入文本
-            use_zero_spk_emb: 是否使用零说话人embedding
-            max_decode_steps: 最大解码步数
-        
-        Returns:
-            torch.Tensor: 生成的波形
-        """
-```
+### JavaScript/HTML Guidelines
+- Keep HTML/CSS/JS in `templates/` directory
+- Use `render_template()`, never `render_template_string()`
+- DOM operations: Standard methods only
 
 ---
 
-## 模板文件规范（重要）
-
-**HTML、CSS、JavaScript 必须与 Python 代码分离**
-
-### 正确的做法
-
-1. **Flask 模板放在 `templates/` 目录**：
-   ```
-   Ming-omni-tts/
-   ├── templates/
-   │   ├── __init__.py
-   │   ├── webui.html
-   │   └── api.html
-   ├── webui.py
-   └── api.py
-   ```
-
-2. **在 Python 中使用 `render_template`**：
-   ```python
-   from flask import Flask, render_template
-   
-   @app.route("/")
-   def index():
-       return render_template("webui.html", config_list=config_list)
-   ```
-
-3. **模板中使用 Jinja2 语法**：
-   ```html
-   <script>
-       var configList = {{ config_list | safe }};
-   </script>
-   ```
-
-### 错误的做法（避免）
-
-- ❌ 不要在 Python 文件中用 `render_template_string(HTML_TEMPLATE)`
-- ❌ 不要把大段 HTML/CSS/JS 放在 Python 变量中
-- ❌ 不要把模板文件放在项目根目录
-
-### JavaScript 规范
-
-1. **避免在 HTML 属性中使用复杂的引号转义**
-   ```javascript
-   // 错误 - 引号转义复杂
-   document.querySelector('.tab[onclick="switchTab(\\'\\' + tabId + \\'\\')"]')
-   
-   // 正确 - 简化引号
-   document.querySelector('.tab[onclick="switchTab(\'' + tabId + '\')"]')
-   ```
-
-2. **DOM 操作使用标准方法**
-   ```javascript
-   // 正确
-   div.style.cssText = 'padding:3px;cursor:pointer;';
-   div.onclick = function() { ... };
-   
-   // 避免 - 复杂字符串拼接容易出错
-   // html += '<div onclick="...">' + name + '</div>'
-   ```
-
-3. **添加调试信息时使用 console.log，避免修改 HTML 结构用于调试**
-
----
-
-## 项目结构
-
+## Project Structure
 ```
 Ming-omni-tts/
-├── webui.py                   # WebUI + MingAudio 类
-├── api.py                     # API 服务
-├── modeling_bailingmm.py       # 主模型
-├── spkemb_extractor.py        # 说话人embedding
-├── common.py                  # 公共函数
-├── inference.py               # 推理函数
-├── templates/                 # Flask 模板（重要！）
-│   ├── __init__.py
-│   ├── webui.html
-│   └── api.html
-├── audio_tokenizer/           # 音频 tokenizer
-├── fm/                       # 流匹配模块
-├── sentence_manager/          # 文本规范化
-├── cookbooks/test.py          # 测试脚本
-└── models/                   # 模型文件
+├── webui.py                   # WebUI + MingAudio class
+├── api.py                     # API service
+├── modeling_bailingmm.py      # Main model
+├── spkemb_extractor.py        # Speaker embedding
+├── common.py                  # Utilities
+├── inference.py               # Inference functions
+├── templates/                 # Flask templates
+├── audio_tokenizer/           # Audio tokenizer
+├── fm/                        # Flow matching modules
+├── sentence_manager/          # Text normalization
+├── cookbooks/test.py          # Test script
+└── models/                    # Model files
 ```
 
 ---
 
-## 推理类别
-
-| 类别 | Prompt |
-|------|--------|
+## Inference Categories
+| Category | Prompt |
+|----------|--------|
 | TTS | "Please generate speech based on the following description.\n" |
 | TTA | "Please generate audio events based on given text.\n" |
 | BGM | "Please generate music based on the following description.\n" |
 
 ---
 
-## 导入注意
-
+## Import Guidelines
 ```python
-# 正确
+# Correct - imports MingAudio class
 from webui import MingAudio
 
-# 错误（会启动整个 webui）
+# Wrong - loads entire webui including Flask app
 # from cookbooks.test import MingAudio
 ```
 
 ---
 
-## 常见错误排查
+## Environment Variables
+| Variable | Default | Description |
+|----------|---------|-------------|
+| MODEL_PATH | ./models/Ming-omni-tts-0.5B | Model path |
+| PORT | 7860 | Service port |
 
-### 1. 模板不加载/404
-- 确认 `templates/` 目录在项目根目录
-- 确认 Flask 的 `template_folder` 默认值（应为 `templates`）
-- 确认模板文件名正确
+---
 
-### 2. JavaScript 语法错误
-- 使用 Node.js 检查语法：`node --check <file.js>`
-- 在浏览器控制台查看具体错误行
-- 检查引号嵌套是否正确
+## Key Classes
+### MingAudio (webui.py / cookbooks/test.py)
+Main interface: `speech_generation()`, `generation()`, `create_instruction()`
 
-### 3. API 返回空数据
-- 检查 Flask 路由是否正确注册
-- 检查函数返回值格式
-- 使用 curl 测试 API 端点
+### BailingMMNativeForConditionalGeneration (modeling_bailingmm.py)
+HuggingFace-compatible model class for all generation logic.
+
+### SpkembExtractor (spkemb_extractor.py)
+Extracts speaker embeddings from audio files.

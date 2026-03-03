@@ -16,29 +16,29 @@
         </div>
 
         <div id="tts" class="tab-content active">
-            <div class="row">
+            <div class="row tts-row">
                 <div class="col">
                     <div class="config-section">
                         <div class="form-group">
-                            <label>配置名称（输入新名称保存或选择已有配置加载/覆盖）：</label>
+                            <label>配置名称：</label>
                             <div class="search-select-container" style="position: relative;">
-                                <input type="text" id="config_search" placeholder="输入配置名称或搜索已保存配置..." autocomplete="off" style="margin-bottom: 5px;">
+                                <input type="text" id="config_search" placeholder="输入配置名称或搜索..." autocomplete="off" style="margin-bottom: 5px;">
                                 <div id="config_dropdown" class="search-dropdown" style="display: none;"></div>
                             </div>
                             <select id="config_list" style="display: none;">
                                 <option value="">加载配置...</option>
                             </select>
                         </div>
-                        <div style="display: flex; gap: 10px; margin-top: 10px;">
-                            <button onclick="loadConfig()">加载配置</button>
-                            <button class="danger" onclick="deleteConfig()">删除配置</button>
-                            <button class="secondary" onclick="saveConfig()">保存配置</button>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button onclick="loadConfig()">加载</button>
+                            <button class="secondary" onclick="saveConfig()">保存</button>
+                            <button class="danger" onclick="deleteConfig()">删除</button>
                         </div>
-                        <div id="config_msg"></div>
+                        <div id="config_msg" class="config-msg"></div>
                     </div>
                     <div class="form-group">
                         <label>输入文本：</label>
-                        <textarea id="tts_text" rows="4" placeholder="请输入要合成语音的文本..."></textarea>
+                        <textarea id="tts_text" rows="5" placeholder="请输入要合成语音的文本..."></textarea>
                     </div>
                     <div class="form-group">
                         <label>参考音频 (可选)：</label>
@@ -52,66 +52,10 @@
                         <label>参考文本 (可选)：</label>
                         <textarea id="tts_prompt_text" rows="2" placeholder="参考音频对应的文本..."></textarea>
                     </div>
-                    
-                    <div class="form-group">
-                        <label class="tooltip-label" data-tooltip="控制语音的播放速度，0.5为半速，2.0为倍速">语速：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tts_speech_speed" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
-                            <span id="tts_speech_speed_val">1.0</span>
-                            <button type="button" class="reset-btn" onclick="resetSlider('tts_speech_speed')">↺</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="tooltip-label" data-tooltip="控制语音的音调高低，数值越大音调越高">音高：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tts_pitch" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
-                            <span id="tts_pitch_val">1.0</span>
-                            <button type="button" class="reset-btn" onclick="resetSlider('tts_pitch')">↺</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="tooltip-label" data-tooltip="控制输出音频的音量大小">音量：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tts_volume" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
-                            <span id="tts_volume_val">1.0</span>
-                            <button type="button" class="reset-btn" onclick="resetSlider('tts_volume')">↺</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="tooltip-label" data-tooltip="生成音频的解码步数，步数越多生成质量越高但耗时更长">解码步数：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tts_max_decode_steps" min="100" max="500" step="50" value="200" data-default="200">
-                            <span id="tts_max_decode_steps_val">200</span>
-                            <button type="button" class="reset-btn" onclick="resetSlider('tts_max_decode_steps')">↺</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="tooltip-label" data-tooltip="Classifier-Free Guidance强度，值越大生成结果越符合文本描述">CFG 强度：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tts_cfg" min="1.0" max="8.0" step="0.5" value="2.0" data-default="2.0">
-                            <span id="tts_cfg_val">2.0</span>
-                            <button type="button" class="reset-btn" onclick="resetSlider('tts_cfg')">↺</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="tooltip-label" data-tooltip="流匹配模型的噪声调度参数，影响生成音频的平滑度">Sigma：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tts_sigma" min="0.1" max="1.0" step="0.05" value="0.25" data-default="0.25">
-                            <span id="tts_sigma_val">0.25</span>
-                            <button type="button" class="reset-btn" onclick="resetSlider('tts_sigma')">↺</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="tooltip-label" data-tooltip="采样温度，值越大生成结果越随机，0为确定性生成">Temperature：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tts_temperature" min="0.0" max="3.0" step="0.1" value="0.0" data-default="0.0">
-                            <span id="tts_temperature_val">0.0</span>
-                            <button type="button" class="reset-btn" onclick="resetSlider('tts_temperature')">↺</button>
-                        </div>
-                    </div>
                 </div>
                 
                 <div class="col">
+                    <h3 class="section-title">音色控制</h3>
                     <div class="form-group">
                         <label>情感：</label>
                         <select id="tts_emotion">
@@ -147,7 +91,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>选择内置音色 (IP)：</label>
+                        <label>内置音色 (IP)：</label>
                         <div class="search-select-container" style="position: relative;">
                             <input type="text" id="ip_search" placeholder="搜索内置音色..." autocomplete="off" style="margin-bottom: 5px;">
                             <div id="ip_dropdown" class="search-dropdown" style="display: none;"></div>
@@ -159,7 +103,7 @@
                     </div>
                     <div class="form-group">
                         <label>音色描述 (可选)：</label>
-                        <textarea id="tts_voice_description" rows="3" placeholder="例如: 这是一位温柔的母亲声音，音色低沉浑厚，充满关爱"></textarea>
+                        <textarea id="tts_voice_description" rows="3" placeholder="例如: 这是一位温柔的母亲声音"></textarea>
                         <div class="examples">
                             <span onclick="setVoiceDesc('一位温柔的母亲声音，音色低沉浑厚，充满关爱')">一位温柔的母亲声音</span>
                             <span onclick="setVoiceDesc('年轻的男性主播，声音清澈明亮，富有活力')">年轻的男性主播</span>
@@ -168,50 +112,110 @@
                             <span onclick="setVoiceDesc('ASMR耳语，气音重，音量极低，语速极慢')">ASMR耳语</span>
                         </div>
                     </div>
-                    
-                    <button id="tts_generate" onclick="generateTTS()">生成语音</button>
-                    
+                </div>
+                
+                <div class="col">
+                    <h3 class="section-title">生成参数</h3>
+                    <div class="form-group">
+                        <label class="tooltip-label" data-tooltip="控制语音的播放速度">语速：</label>
+                        <div class="slider-group">
+                            <input type="range" id="tts_speech_speed" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
+                            <span id="tts_speech_speed_val">1.0</span>
+                            <button type="button" class="reset-btn" onclick="resetSlider('tts_speech_speed')">↺</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="tooltip-label" data-tooltip="控制语音的音调高低">音高：</label>
+                        <div class="slider-group">
+                            <input type="range" id="tts_pitch" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
+                            <span id="tts_pitch_val">1.0</span>
+                            <button type="button" class="reset-btn" onclick="resetSlider('tts_pitch')">↺</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="tooltip-label" data-tooltip="控制输出音频的音量大小">音量：</label>
+                        <div class="slider-group">
+                            <input type="range" id="tts_volume" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
+                            <span id="tts_volume_val">1.0</span>
+                            <button type="button" class="reset-btn" onclick="resetSlider('tts_volume')">↺</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="tooltip-label" data-tooltip="解码步数越多质量越高">解码步数：</label>
+                        <div class="slider-group">
+                            <input type="range" id="tts_max_decode_steps" min="100" max="500" step="50" value="200" data-default="200">
+                            <span id="tts_max_decode_steps_val">200</span>
+                            <button type="button" class="reset-btn" onclick="resetSlider('tts_max_decode_steps')">↺</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="tooltip-label" data-tooltip="CFG强度，值越大越符合文本描述">CFG：</label>
+                        <div class="slider-group">
+                            <input type="range" id="tts_cfg" min="1.0" max="8.0" step="0.5" value="2.0" data-default="2.0">
+                            <span id="tts_cfg_val">2.0</span>
+                            <button type="button" class="reset-btn" onclick="resetSlider('tts_cfg')">↺</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="tooltip-label" data-tooltip="影响生成音频的平滑度">Sigma：</label>
+                        <div class="slider-group">
+                            <input type="range" id="tts_sigma" min="0.1" max="1.0" step="0.05" value="0.25" data-default="0.25">
+                            <span id="tts_sigma_val">0.25</span>
+                            <button type="button" class="reset-btn" onclick="resetSlider('tts_sigma')">↺</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="tooltip-label" data-tooltip="采样温度，值越大越随机">Temperature：</label>
+                        <div class="slider-group">
+                            <input type="range" id="tts_temperature" min="0.0" max="3.0" step="0.1" value="0.0" data-default="0.0">
+                            <span id="tts_temperature_val">0.0</span>
+                            <button type="button" class="reset-btn" onclick="resetSlider('tts_temperature')">↺</button>
+                        </div>
+                    </div>
+                    <button id="tts_generate" onclick="generateTTS()" class="generate-btn">生成语音</button>
                     <div id="tts_result"></div>
                 </div>
             </div>
         </div>
 
         <div id="tta" class="tab-content">
-            <div class="row">
+            <div class="row compact">
                 <div class="col">
                     <div class="form-group">
                         <label>声音事件描述：</label>
                         <textarea id="tta_text" rows="4" placeholder="例如: Thunder and a gentle rain"></textarea>
                     </div>
-                    <div class="form-group">
-                        <label>解码步数：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tta_max_decode_steps" min="100" max="500" step="50" value="200">
-                            <span id="tta_max_decode_steps_val">200</span>
+                    <div class="params-grid">
+                        <div class="form-group">
+                            <label>解码步数：</label>
+                            <div class="slider-group">
+                                <input type="range" id="tta_max_decode_steps" min="100" max="500" step="50" value="200">
+                                <span id="tta_max_decode_steps_val">200</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>CFG：</label>
+                            <div class="slider-group">
+                                <input type="range" id="tta_cfg" min="1.0" max="8.0" step="0.5" value="4.5">
+                                <span id="tta_cfg_val">4.5</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Sigma：</label>
+                            <div class="slider-group">
+                                <input type="range" id="tta_sigma" min="0.1" max="1.0" step="0.05" value="0.3">
+                                <span id="tta_sigma_val">0.3</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Temperature：</label>
+                            <div class="slider-group">
+                                <input type="range" id="tta_temperature" min="0.0" max="3.0" step="0.1" value="2.5">
+                                <span id="tta_temperature_val">2.5</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>CFG 强度：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tta_cfg" min="1.0" max="8.0" step="0.5" value="4.5">
-                            <span id="tta_cfg_val">4.5</span>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Sigma：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tta_sigma" min="0.1" max="1.0" step="0.05" value="0.3">
-                            <span id="tta_sigma_val">0.3</span>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Temperature：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tta_temperature" min="0.0" max="3.0" step="0.1" value="2.5">
-                            <span id="tta_temperature_val">2.5</span>
-                        </div>
-                    </div>
-                    <button onclick="generateTTA()">生成声音</button>
+                    <button onclick="generateTTA()" class="generate-btn">生成声音</button>
                 </div>
                 <div class="col">
                     <div id="tta_result"></div>
@@ -220,54 +224,56 @@
         </div>
 
         <div id="bgm" class="tab-content">
-            <div class="row">
+            <div class="row compact">
                 <div class="col">
-                    <div class="form-group">
-                        <label>音乐风格：</label>
-                        <select id="bgm_genre">
-                            <option value="无">无</option>
-                            <option value="电子舞曲">电子舞曲</option>
-                            <option value="古典">古典</option>
-                            <option value="流行">流行</option>
-                            <option value="摇滚">摇滚</option>
-                            <option value="爵士">爵士</option>
-                            <option value="乡村">乡村</option>
-                            <option value="嘻哈">嘻哈</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>情绪：</label>
-                        <select id="bgm_mood">
-                            <option value="无">无</option>
-                            <option value="欢快">欢快</option>
-                            <option value="悲伤">悲伤</option>
-                            <option value="紧张">紧张</option>
-                            <option value="放松">放松</option>
-                            <option value="神秘">神秘</option>
-                            <option value="浪漫">浪漫</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>主乐器：</label>
-                        <select id="bgm_instrument">
-                            <option value="无">无</option>
-                            <option value="钢琴">钢琴</option>
-                            <option value="吉他">吉他</option>
-                            <option value="架子鼓">架子鼓</option>
-                            <option value="小提琴">小提琴</option>
-                            <option value="电吉他">电吉他</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>主题：</label>
-                        <select id="bgm_theme">
-                            <option value="无">无</option>
-                            <option value="节日">节日</option>
-                            <option value="运动">运动</option>
-                            <option value="放松">放松</option>
-                            <option value="工作">工作</option>
-                            <option value="电影">电影</option>
-                        </select>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>音乐风格：</label>
+                            <select id="bgm_genre">
+                                <option value="无">无</option>
+                                <option value="电子舞曲">电子舞曲</option>
+                                <option value="古典">古典</option>
+                                <option value="流行">流行</option>
+                                <option value="摇滚">摇滚</option>
+                                <option value="爵士">爵士</option>
+                                <option value="乡村">乡村</option>
+                                <option value="嘻哈">嘻哈</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>情绪：</label>
+                            <select id="bgm_mood">
+                                <option value="无">无</option>
+                                <option value="欢快">欢快</option>
+                                <option value="悲伤">悲伤</option>
+                                <option value="紧张">紧张</option>
+                                <option value="放松">放松</option>
+                                <option value="神秘">神秘</option>
+                                <option value="浪漫">浪漫</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>主乐器：</label>
+                            <select id="bgm_instrument">
+                                <option value="无">无</option>
+                                <option value="钢琴">钢琴</option>
+                                <option value="吉他">吉他</option>
+                                <option value="架子鼓">架子鼓</option>
+                                <option value="小提琴">小提琴</option>
+                                <option value="电吉他">电吉他</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>主题：</label>
+                            <select id="bgm_theme">
+                                <option value="无">无</option>
+                                <option value="节日">节日</option>
+                                <option value="运动">运动</option>
+                                <option value="放松">放松</option>
+                                <option value="工作">工作</option>
+                                <option value="电影">电影</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>解码步数：</label>
@@ -276,7 +282,7 @@
                             <span id="bgm_max_decode_steps_val">400</span>
                         </div>
                     </div>
-                    <button onclick="generateBGM()">生成音乐</button>
+                    <button onclick="generateBGM()" class="generate-btn">生成音乐</button>
                 </div>
                 <div class="col">
                     <div id="bgm_result"></div>

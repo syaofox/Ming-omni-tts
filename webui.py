@@ -733,35 +733,27 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     <button id="tts_generate" onclick="generateTTS()">生成语音</button>
                     
                     <div id="tts_result"></div>
-                </div>
-            </div>
-            
-            <div class="config-section">
-                <h3>配置管理</h3>
-                <div class="row">
-                    <div class="col">
+                    
+                    <div class="config-section">
+                        <h3>配置管理</h3>
                         <div class="form-group">
-                            <label>配置名称：</label>
-                            <input type="text" id="config_name" placeholder="输入配置名称保存...">
-                        </div>
-                        <button onclick="saveConfig()">保存配置</button>
-                    </div>
-                    <div class="col">
-                        <div class="form-group">
-                            <label>已保存配置：</label>
+                            <label>配置名称（输入新名称保存或选择已有配置加载/覆盖）：</label>
                             <div class="search-select-container" style="position: relative;">
-                                <input type="text" id="config_search" placeholder="搜索已保存配置..." autocomplete="off" style="margin-bottom: 5px;">
+                                <input type="text" id="config_search" placeholder="输入配置名称或搜索已保存配置..." autocomplete="off" style="margin-bottom: 5px;">
                                 <div id="config_dropdown" class="search-dropdown" style="display: none;"></div>
                             </div>
                             <select id="config_list" style="display: none;">
                                 <option value="">加载配置...</option>
                             </select>
                         </div>
-                        <button class="secondary" onclick="loadConfig()">加载配置</button>
-                        <button class="danger" onclick="deleteConfig()">删除配置</button>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button onclick="saveConfig()">保存配置</button>
+                            <button class="secondary" onclick="loadConfig()">加载配置</button>
+                            <button class="danger" onclick="deleteConfig()">删除配置</button>
+                        </div>
+                        <div id="config_msg"></div>
                     </div>
                 </div>
-                <div id="config_msg"></div>
             </div>
         </div>
 
@@ -1336,9 +1328,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
 
         async function saveConfig() {
-            var configName = document.getElementById('config_name').value;
+            var configName = document.getElementById('config_search').value;
             if (!configName) {
-                document.getElementById('config_msg').textContent = '请输入配置名称';
+                document.getElementById('config_msg').textContent = '请输入或选择配置名称';
                 return;
             }
 

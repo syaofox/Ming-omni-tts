@@ -98,6 +98,10 @@ def generate_speech(
     use_spk_emb = prompt_audio is not None
     use_zero_spk_emb = prompt_audio is None
 
+    if task_type in ["声音事件 (TTA)", "背景音乐 (BGM)"]:
+        use_spk_emb = False
+        use_zero_spk_emb = False
+
     instruction = build_instruction(
         voice_description=voice_description,
         emotion=emotion,

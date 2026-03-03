@@ -18,6 +18,24 @@
         <div id="tts" class="tab-content active">
             <div class="row">
                 <div class="col">
+                    <div class="config-section">
+                        <div class="form-group">
+                            <label>配置名称（输入新名称保存或选择已有配置加载/覆盖）：</label>
+                            <div class="search-select-container" style="position: relative;">
+                                <input type="text" id="config_search" placeholder="输入配置名称或搜索已保存配置..." autocomplete="off" style="margin-bottom: 5px;">
+                                <div id="config_dropdown" class="search-dropdown" style="display: none;"></div>
+                            </div>
+                            <select id="config_list" style="display: none;">
+                                <option value="">加载配置...</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button onclick="loadConfig()">加载配置</button>
+                            <button class="danger" onclick="deleteConfig()">删除配置</button>
+                            <button class="secondary" onclick="saveConfig()">保存配置</button>
+                        </div>
+                        <div id="config_msg"></div>
+                    </div>
                     <div class="form-group">
                         <label>输入文本：</label>
                         <textarea id="tts_text" rows="4" placeholder="请输入要合成语音的文本..."></textarea>
@@ -154,26 +172,6 @@
                     <button id="tts_generate" onclick="generateTTS()">生成语音</button>
                     
                     <div id="tts_result"></div>
-                    
-                    <div class="config-section">
-                        <h3>配置管理</h3>
-                        <div class="form-group">
-                            <label>配置名称（输入新名称保存或选择已有配置加载/覆盖）：</label>
-                            <div class="search-select-container" style="position: relative;">
-                                <input type="text" id="config_search" placeholder="输入配置名称或搜索已保存配置..." autocomplete="off" style="margin-bottom: 5px;">
-                                <div id="config_dropdown" class="search-dropdown" style="display: none;"></div>
-                            </div>
-                            <select id="config_list" style="display: none;">
-                                <option value="">加载配置...</option>
-                            </select>
-                        </div>
-                        <div style="display: flex; gap: 10px; margin-top: 10px;">
-                            <button onclick="saveConfig()">保存配置</button>
-                            <button class="secondary" onclick="loadConfig()">加载配置</button>
-                            <button class="danger" onclick="deleteConfig()">删除配置</button>
-                        </div>
-                        <div id="config_msg"></div>
-                    </div>
                 </div>
             </div>
         </div>

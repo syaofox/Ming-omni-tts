@@ -596,6 +596,33 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         .drop-zone p { margin: 0; color: #666; font-size: 14px; }
         .reset-btn { background: #9E9E9E; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 14px; margin-left: 5px; }
         .reset-btn:hover { background: #757575; }
+        .tooltip-label { position: relative; cursor: help; }
+        .tooltip-label:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .tooltip-label:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #333;
+            margin-bottom: -8px;
+        }
     </style>
 </head>
 <body>
@@ -630,7 +657,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     </div>
                     
                     <div class="form-group">
-                        <label>语速：</label>
+                        <label class="tooltip-label" data-tooltip="控制语音的播放速度，0.5为半速，2.0为倍速">语速：</label>
                         <div class="slider-group">
                             <input type="range" id="tts_speech_speed" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
                             <span id="tts_speech_speed_val">1.0</span>
@@ -638,7 +665,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>音高：</label>
+                        <label class="tooltip-label" data-tooltip="控制语音的音调高低，数值越大音调越高">音高：</label>
                         <div class="slider-group">
                             <input type="range" id="tts_pitch" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
                             <span id="tts_pitch_val">1.0</span>
@@ -646,7 +673,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>音量：</label>
+                        <label class="tooltip-label" data-tooltip="控制输出音频的音量大小">音量：</label>
                         <div class="slider-group">
                             <input type="range" id="tts_volume" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
                             <span id="tts_volume_val">1.0</span>
@@ -654,7 +681,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>解码步数：</label>
+                        <label class="tooltip-label" data-tooltip="生成音频的解码步数，步数越多生成质量越高但耗时更长">解码步数：</label>
                         <div class="slider-group">
                             <input type="range" id="tts_max_decode_steps" min="100" max="500" step="50" value="200" data-default="200">
                             <span id="tts_max_decode_steps_val">200</span>
@@ -662,7 +689,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>CFG 强度：</label>
+                        <label class="tooltip-label" data-tooltip="Classifier-Free Guidance强度，值越大生成结果越符合文本描述">CFG 强度：</label>
                         <div class="slider-group">
                             <input type="range" id="tts_cfg" min="1.0" max="8.0" step="0.5" value="2.0" data-default="2.0">
                             <span id="tts_cfg_val">2.0</span>
@@ -670,7 +697,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Sigma：</label>
+                        <label class="tooltip-label" data-tooltip="流匹配模型的噪声调度参数，影响生成音频的平滑度">Sigma：</label>
                         <div class="slider-group">
                             <input type="range" id="tts_sigma" min="0.1" max="1.0" step="0.05" value="0.25" data-default="0.25">
                             <span id="tts_sigma_val">0.25</span>
@@ -678,7 +705,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Temperature：</label>
+                        <label class="tooltip-label" data-tooltip="采样温度，值越大生成结果越随机，0为确定性生成">Temperature：</label>
                         <div class="slider-group">
                             <input type="range" id="tts_temperature" min="0.0" max="3.0" step="0.1" value="0.0" data-default="0.0">
                             <span id="tts_temperature_val">0.0</span>

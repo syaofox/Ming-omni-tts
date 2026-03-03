@@ -297,7 +297,7 @@ def create_webui(
         model = None
         logger.info("Running in demo mode without model")
 
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder="static", static_url_path="/static")
     CORS(app)
 
     def load_ip_data():

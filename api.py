@@ -144,10 +144,10 @@ def create_api(model):
     @app.route("/")
     def handle_request():
         text = request.args.get("text", "")
-        speaker = request.args.get("speaker", "京京")
+        speaker = request.args.get("speaker", "小缘")
 
         config_list = get_config_list()
-        default_speaker = config_list[0] if config_list else "京京"
+        default_speaker = config_list[0] if config_list else "小缘"
         config_options = "".join(
             [f'<option value="{c}">{c}</option>' for c in config_list]
         )
@@ -309,7 +309,7 @@ if __name__ == "__main__":
     print(f"🎤 Ming-Omni-TTS API 服务已启动!")
     print(f"{'=' * 60}")
     print(f"📡 API 服务: http://localhost:{port}/")
-    print(f"   调用示例: http://localhost:{port}/?text=你好世界&speaker=京京")
+    print(f"   调用示例: http://localhost:{port}/?text=你好世界&speaker=小缘")
     print(f"{'=' * 60}\n")
 
     run_simple("0.0.0.0", port, flask_app, use_reloader=False, use_debugger=False)

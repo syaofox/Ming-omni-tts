@@ -19,7 +19,8 @@ docker/
 docker-compose*.yml
 
 # Development files
-cookbooks/
+cookbooks/*
+!cookbooks/ip_data.json
 output/
 figures/
 data/

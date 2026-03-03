@@ -51,11 +51,9 @@ RUN pip install --no-cache-dir \
     opencc-python-reimplemented \
     loguru
 
-ARG FLASH_ATTN_WHEEL=flash_attn-2.7.0.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
-ARG FLASH_ATTN_URL=https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.0.post1/${FLASH_ATTN_WHEEL}
-RUN wget -q ${FLASH_ATTN_URL} -O /tmp/${FLASH_ATTN_WHEEL} && \
-    pip install --no-cache-dir /tmp/${FLASH_ATTN_WHEEL} && \
-    rm /tmp/${FLASH_ATTN_WHEEL}
+COPY docker/wheels/flash_attn-2.7.0.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl /tmp/
+RUN pip install --no-cache-dir /tmp/flash_attn-2.7.0.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl && \
+    rm /tmp/flash_attn-2.7.0.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 
 ARG UID=1000
 ARG GID=1000

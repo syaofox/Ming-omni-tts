@@ -74,6 +74,7 @@ def save_config(
     cfg,
     sigma,
     temperature,
+    ip=None,
 ):
     if not config_name or not config_name.strip():
         return "请输入配置名称", False
@@ -105,6 +106,7 @@ def save_config(
         "cfg": cfg,
         "sigma": sigma,
         "temperature": temperature,
+        "ip": ip,
     }
 
     config_file = os.path.join(config_path, "config.json")

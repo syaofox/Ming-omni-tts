@@ -365,6 +365,7 @@ def create_webui(
             cfg=float(data.get("cfg", 2.0)),
             sigma=float(data.get("sigma", 0.25)),
             temperature=float(data.get("temperature", 0.0)),
+            ip=data.get("ip"),
         )
         return jsonify({"success": success, "message": msg})
 

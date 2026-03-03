@@ -71,6 +71,7 @@ def create_api(model):
                 "dialect": None,
                 "style": None,
                 "voice_description": None,
+                "ip": None,
                 "speech_speed": 1.0,
                 "pitch": 1.0,
                 "volume": 1.0,
@@ -100,6 +101,7 @@ def create_api(model):
                 sigma=config_data.get("sigma", 0.25),
                 temperature=config_data.get("temperature", 0.0),
                 voice_description=config_data.get("voice_description"),
+                ip=config_data.get("ip"),
                 output_path=output_path,
             )
 

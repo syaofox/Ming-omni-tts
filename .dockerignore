@@ -15,6 +15,7 @@ LEGAL.md
 
 # Docker
 docker/
+!docker/wheels/
 docker-compose*.yml
 
 # Development files

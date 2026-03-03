@@ -803,6 +803,9 @@
                     document.getElementById('tts_dialect').value = data.dialect || '无';
                     document.getElementById('tts_style').value = data.style || '无';
                     document.getElementById('tts_voice_description').value = data.voice_description || '';
+                    var ipValue = data.ip || '';
+                    document.getElementById('tts_ip').value = ipValue;
+                    document.getElementById('ip_search').value = ipValue;
                     setSlider('tts_speech_speed', data.speech_speed || 1.0);
                     setSlider('tts_pitch', data.pitch || 1.0);
                     setSlider('tts_volume', data.volume || 1.0);

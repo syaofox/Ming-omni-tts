@@ -54,6 +54,7 @@ data/wavs/
 # Docker
 .docker/
 docker-compose.override.yml
+docker/wheels/
 
 # Cache
 .ruff_cache/

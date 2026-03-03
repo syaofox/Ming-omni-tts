@@ -1293,7 +1293,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     // 显示已保存的音频
                     var audioDisplay = document.getElementById('tts_prompt_audio_display');
                     if (data.prompt_audio) {
-                        audioDisplay.innerHTML = '<audio controls src="/config_audio/' + encodeURIComponent(data.name) + '"></audio><p style="font-size:12px;color:#666;">已保存的参考音频</p>';
+                        audioDisplay.innerHTML = '<audio controls src="/config_audio/' + encodeURIComponent(data.name) + '"></audio><p style="font-size:12px;color:#666;">已保存的参考音频(' + data.name + ')</p>';
                         document.getElementById('tts_prompt_audio').dataset.filepath = data.prompt_audio;
                     } else {
                         audioDisplay.innerHTML = '';

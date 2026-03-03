@@ -44,7 +44,9 @@ RUN pip install --no-cache-dir \
     jiwer==3.1.0 \
     rich \
     flask \
-    flask-cors
+    flask-cors \
+    pypinyin \
+    opencc-python-reimplemented
 
 ARG FLASH_ATTN_WHEEL=flash_attn-2.7.0.post1+cu12torch2.5cxx11abiFALSE-cp311-cp311-linux_x86_64.whl
 ARG FLASH_ATTN_URL=https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.0.post1/${FLASH_ATTN_WHEEL}

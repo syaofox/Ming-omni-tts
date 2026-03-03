@@ -13,6 +13,8 @@ from transformers import AutoTokenizer
 from flask import Flask, request, send_file, jsonify, render_template_string
 from flask_cors import CORS
 from loguru import logger
+from pypinyin import lazy_pinyin
+import opencc
 
 warnings.filterwarnings("ignore")
 
@@ -30,6 +32,33 @@ UPLOAD_DIR = "./uploads"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(CONFIG_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+opencc_converter = opencc.OpenCC("s2t")
+
+
+def get_pinyin(text):
+    if not text:
+        return ""
+    return "".join(lazy_pinyin(text))
+
+
+def get_pinyin_initials(text):
+    if not text:
+        return ""
+    pinyin_list = lazy_pinyin(text)
+    return "".join([p[0] if p else "" for p in pinyin_list])
+
+
+def to_traditional(text):
+    if not text:
+        return text
+    return opencc_converter.convert(text)
+
+
+def to_simplified(text):
+    if not text:
+        return text
+    return opencc.convert(text)
 
 
 def copy_audio_to_config_dir(audio_path, config_name):
@@ -430,11 +459,32 @@ def create_webui(
     @app.route("/ip_data", methods=["GET"])
     def get_ip_data():
         ip_data = load_ip_data()
-        return jsonify(ip_data)
+        ip_data_with_pinyin = {}
+        for name, desc in ip_data.items():
+            traditional = to_traditional(name)
+            ip_data_with_pinyin[name] = {
+                "description": desc,
+                "pinyin": get_pinyin(name),
+                "initials": get_pinyin_initials(name),
+                "traditional": traditional,
+                "traditional_pinyin": get_pinyin(traditional),
+                "traditional_initials": get_pinyin_initials(traditional),
+            }
+        return jsonify(ip_data_with_pinyin)
 
     @app.route("/configs", methods=["GET"])
     def list_configs():
-        return jsonify(get_config_list())
+        configs = get_config_list()
+        configs_with_pinyin = []
+        for c in configs:
+            configs_with_pinyin.append(
+                {
+                    "name": c,
+                    "pinyin": get_pinyin(c),
+                    "initials": get_pinyin_initials(c),
+                }
+            )
+        return jsonify(configs_with_pinyin)
 
     @app.route("/save_config", methods=["POST"])
     def api_save_config():
@@ -999,8 +1049,26 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             dropdown.innerHTML = '';
             dropdown.style.display = 'block';
             
+            var filterLower = filter.toLowerCase().trim();
+            var filterNoSpace = filterLower.replace(/\s+/g, '');
+            
             var matched = ipList.filter(function(ip) {
-                return ip.toLowerCase().includes(filter.toLowerCase());
+                var data = ipData[ip] || {};
+                var nameLower = ip.toLowerCase();
+                var pinyinLower = (data.pinyin || '').toLowerCase();
+                var initialsLower = (data.initials || '').toLowerCase();
+                var tradLower = (data.traditional || '').toLowerCase();
+                var tradPinyinLower = (data.traditional_pinyin || '').toLowerCase();
+                var tradInitialsLower = (data.traditional_initials || '').toLowerCase();
+                var initialsNoSpace = initialsLower.replace(/\s+/g, '');
+                var tradInitialsNoSpace = tradInitialsLower.replace(/\s+/g, '');
+                
+                return nameLower.includes(filterLower) ||
+                       pinyinLower.includes(filterLower) ||
+                       initialsNoSpace.includes(filterNoSpace) ||
+                       tradLower.includes(filterLower) ||
+                       tradPinyinLower.includes(filterLower) ||
+                       tradInitialsNoSpace.includes(filterNoSpace);
             });
             
             if (matched.length === 0) {
@@ -1030,6 +1098,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         document.getElementById('ip_search').addEventListener('input', function() {
             var value = this.value;
+            if (!value) {
+                document.getElementById('tts_ip').value = '';
+            }
             if (value) {
                 showIPDropdown(value);
             } else {
@@ -1051,6 +1122,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         // Config data and dropdown handling
         var configList = [];
+        var configDataList = [];
         
         function showConfigDropdown(filter) {
             var dropdown = document.getElementById('config_dropdown');
@@ -1058,9 +1130,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             dropdown.innerHTML = '';
             dropdown.style.display = 'block';
             
-            var matched = configList.filter(function(c) {
-                return c.toLowerCase().includes(filter.toLowerCase());
-            });
+            var filterLower = filter.toLowerCase().trim();
+            var filterNoSpace = filterLower.replace(/\s+/g, '');
+            
+            var matched = configDataList.filter(function(c) {
+                var nameLower = c.name.toLowerCase();
+                var pinyinLower = (c.pinyin || '').toLowerCase();
+                var initialsLower = (c.initials || '').toLowerCase().replace(/\s+/g, '');
+                
+                return nameLower.includes(filterLower) ||
+                       pinyinLower.includes(filterLower) ||
+                       initialsLower.includes(filterNoSpace);
+            }).map(function(c) { return c.name; });
             
             if (matched.length === 0) {
                 var noResult = document.createElement('div');
@@ -1089,6 +1170,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         document.getElementById('config_search').addEventListener('input', function() {
             var value = this.value;
+            if (!value) {
+                document.getElementById('config_list').value = '';
+            }
             if (value) {
                 showConfigDropdown(value);
             } else {
@@ -1104,7 +1188,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         function selectIP(ip) {
             if (ip && ipData[ip]) {
                 document.getElementById('tts_ip').value = ip;
-                document.getElementById('tts_voice_description').value = ipData[ip];
+                document.getElementById('tts_voice_description').value = ipData[ip].description || '';
             } else {
                 document.getElementById('tts_ip').value = '';
             }
@@ -1380,17 +1464,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
 
         // Config management
+        var configDataList = [];
+        
         async function loadConfigList() {
             try {
                 var resp = await fetch('/configs');
                 var configs = await resp.json();
                 var select = document.getElementById('config_list');
                 select.innerHTML = '<option value="">加载配置...</option>';
-                configList = configs.slice();
+                configDataList = configs;
+                configList = configs.map(function(c) { return c.name; });
                 configs.forEach(function(c) {
                     var opt = document.createElement('option');
-                    opt.value = c;
-                    opt.textContent = c;
+                    opt.value = c.name;
+                    opt.textContent = c.name;
                     select.appendChild(opt);
                 });
             } catch (e) {}

@@ -9,9 +9,11 @@ import json
 import opencc
 from pypinyin import lazy_pinyin
 
+import tempfile
+
 OUTPUT_DIR = "./output"
 CONFIG_DIR = "./saved_configs"
-UPLOAD_DIR = "./uploads"
+UPLOAD_DIR = tempfile.gettempdir()
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(CONFIG_DIR, exist_ok=True)

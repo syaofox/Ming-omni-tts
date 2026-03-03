@@ -31,6 +31,3 @@ models/
 
 # Config files (dependencies already in Dockerfile)
 requirements.txt
-
-# uploads
-uploads/

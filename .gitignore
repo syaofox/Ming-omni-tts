@@ -70,5 +70,3 @@ docker-compose.override.yml
 *.log
 logs/
 
-# uploads
-uploads/

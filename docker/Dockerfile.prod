@@ -59,7 +59,7 @@ RUN groupadd -g ${GID} appgroup && \
 
 WORKDIR /app
 
-RUN mkdir -p /app/output /app/saved_configs /app/models /app/uploads
+RUN mkdir -p /app/output /app/saved_configs /app/models
 
 COPY --chown=appuser:appgroup . /app/
 

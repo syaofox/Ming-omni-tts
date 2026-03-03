@@ -8,6 +8,8 @@
 
 Ming-omni-tts 是一个高性能的统一音频生成模型，支持语音、音乐和声音的生成与控制。基于 PyTorch 2.6.0 和 CUDA 12.4 开发。
 
+---
+
 ## 环境设置
 
 ### Docker 环境
@@ -77,6 +79,9 @@ docker compose -f docker-compose.dev.yml run --rm ming-omni-tts python -m py_com
 
 # ruff 检查（需安装）
 docker compose -f docker-compose.dev.yml run --rm ming-omni-tts pip install ruff && ruff check .
+
+# JavaScript 语法检查（使用 node）
+docker compose -f docker-compose.dev.yml run --rm ming-omni-tts bash -c "curl -s http://localhost:7860/ | sed -n 's/<script>//;s/<\\/script>//' > /tmp/test.js && node --check /tmp/test.js"
 ```
 
 ### 环境变量
@@ -191,20 +196,92 @@ class MingAudio:
 
 ---
 
+## 模板文件规范（重要）
+
+**HTML、CSS、JavaScript 必须与 Python 代码分离**
+
+### 正确的做法
+
+1. **Flask 模板放在 `templates/` 目录**：
+   ```
+   Ming-omni-tts/
+   ├── templates/
+   │   ├── __init__.py
+   │   ├── webui.html
+   │   └── api.html
+   ├── webui.py
+   └── api.py
+   ```
+
+2. **在 Python 中使用 `render_template`**：
+   ```python
+   from flask import Flask, render_template
+   
+   @app.route("/")
+   def index():
+       return render_template("webui.html", config_list=config_list)
+   ```
+
+3. **模板中使用 Jinja2 语法**：
+   ```html
+   <script>
+       var configList = {{ config_list | safe }};
+   </script>
+   ```
+
+### 错误的做法（避免）
+
+- ❌ 不要在 Python 文件中用 `render_template_string(HTML_TEMPLATE)`
+- ❌ 不要把大段 HTML/CSS/JS 放在 Python 变量中
+- ❌ 不要把模板文件放在项目根目录
+
+### JavaScript 规范
+
+1. **避免在 HTML 属性中使用复杂的引号转义**
+   ```javascript
+   // 错误 - 引号转义复杂
+   document.querySelector('.tab[onclick="switchTab(\\'\\' + tabId + \\'\\')"]')
+   
+   // 正确 - 简化引号
+   document.querySelector('.tab[onclick="switchTab(\'' + tabId + '\')"]')
+   ```
+
+2. **DOM 操作使用标准方法**
+   ```javascript
+   // 正确
+   div.style.cssText = 'padding:3px;cursor:pointer;';
+   div.onclick = function() { ... };
+   
+   // 避免 - 复杂字符串拼接容易出错
+   // html += '<div onclick="...">' + name + '</div>'
+   ```
+
+3. **添加调试信息时使用 console.log，避免修改 HTML 结构用于调试**
+
+---
+
 ## 项目结构
 
 ```
 Ming-omni-tts/
 ├── webui.py                   # WebUI + MingAudio 类
 ├── api.py                     # API 服务
-├── modeling_bailingmm.py      # 主模型
+├── modeling_bailingmm.py       # 主模型
 ├── spkemb_extractor.py        # 说话人embedding
+├── common.py                  # 公共函数
+├── inference.py               # 推理函数
+├── templates/                 # Flask 模板（重要！）
+│   ├── __init__.py
+│   ├── webui.html
+│   └── api.html
 ├── audio_tokenizer/           # 音频 tokenizer
-├── fm/                        # 流匹配模块
+├── fm/                       # 流匹配模块
 ├── sentence_manager/          # 文本规范化
 ├── cookbooks/test.py          # 测试脚本
-└── models/                    # 模型文件
+└── models/                   # 模型文件
 ```
+
+---
 
 ## 推理类别
 
@@ -213,6 +290,8 @@ Ming-omni-tts/
 | TTS | "Please generate speech based on the following description.\n" |
 | TTA | "Please generate audio events based on given text.\n" |
 | BGM | "Please generate music based on the following description.\n" |
+
+---
 
 ## 导入注意
 
@@ -223,3 +302,22 @@ from webui import MingAudio
 # 错误（会启动整个 webui）
 # from cookbooks.test import MingAudio
 ```
+
+---
+
+## 常见错误排查
+
+### 1. 模板不加载/404
+- 确认 `templates/` 目录在项目根目录
+- 确认 Flask 的 `template_folder` 默认值（应为 `templates`）
+- 确认模板文件名正确
+
+### 2. JavaScript 语法错误
+- 使用 Node.js 检查语法：`node --check <file.js>`
+- 在浏览器控制台查看具体错误行
+- 检查引号嵌套是否正确
+
+### 3. API 返回空数据
+- 检查 Flask 路由是否正确注册
+- 检查函数返回值格式
+- 使用 curl 测试 API 端点

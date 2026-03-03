@@ -7,7 +7,7 @@ import sys
 import uuid
 
 import torch
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, render_template
 from flask_cors import CORS
 from loguru import logger
 
@@ -24,7 +24,6 @@ from common import (
     get_config_list,
 )
 
-from templates import get_api_html
 from inference import generate_speech as _generate_speech
 
 
@@ -54,7 +53,11 @@ def create_api(model):
             )
 
         if not text:
-            return get_api_html(config_list_json, default_speaker)
+            return render_template(
+                "api.html",
+                config_list=config_list_json,
+                default_speaker=default_speaker,
+            )
 
         logger.info(f"API请求: text='{text[:50]}...' speaker='{speaker}'")
 

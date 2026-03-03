@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Ming-Omni-TTS API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        textarea {
+            resize: vertical;
+        }
+        button {
+            width: 100%;
+            background: #4CAF50;
+            color: white;
+            padding: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .result.success {
+            background: #e8f5e9;
+            border: 1px solid #4CAF50;
+        }
+        .result.error {
+            background: #ffebee;
+            border: 1px solid #f44336;
+        }
+        audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+        .example {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #666;
+        }
+        .example code {
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 3px;
+            word-break: break-all;
+        }
+        .search-select-container {
+            position: relative;
+        }
+        .search-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        .search-dropdown div {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .search-dropdown div:last-child {
+            border-bottom: none;
+        }
+        .search-dropdown div:hover {
+            background: #f5f5f5;
+        }
+        .search-dropdown div.no-result {
+            color: #999;
+            cursor: default;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ming-Omni-TTS API</h1>
+        
+        <div class="form-group">
+            <label>文本：</label>
+            <textarea id="text" rows="4" placeholder="请输入要合成语音的文本..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>音色：</label>
+            <div class="search-select-container">
+                <input type="text" id="speaker_search" placeholder="搜索音色..." autocomplete="off">
+                <div id="speaker_dropdown" class="search-dropdown" style="display: none;"></div>
+            </div>
+            <select id="speaker" style="display: none;">
+                <option value="">选择音色...</option>
+            </select>
+        </div>
+        
+        <button id="generate" onclick="generate()">生成语音</button>
+        
+        <div id="result"></div>
+        
+        <div class="example">
+            <strong>API 调用示例：</strong><br><br>
+            <code>GET /?text=你好世界&amp;speaker=小缘</code>
+        </div>
+    </div>
+
+    <script>
+        var configList = {{ config_list | safe }};
+        var defaultSpeaker = "{{ default_speaker }}";
+        
+        function initSpeakerSelect() {
+            var select = document.getElementById('speaker');
+            select.innerHTML = '<option value="">选择音色...</option>';
+            configList.forEach(function(c) {
+                var option = document.createElement('option');
+                option.value = c.name;
+                option.textContent = c.name;
+                if (c.name === defaultSpeaker) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        }
+        
+        function showSpeakerDropdown(filter) {
+            var dropdown = document.getElementById('speaker_dropdown');
+            var input = document.getElementById('speaker_search');
+            dropdown.innerHTML = '';
+            dropdown.style.display = 'block';
+            
+            var filterLower = filter.toLowerCase().trim();
+            var filterNoSpace = filterLower.replace(/\s+/g, '');
+            
+            var matched = configList.filter(function(c) {
+                var nameLower = c.name.toLowerCase();
+                var pinyinLower = (c.pinyin || '').toLowerCase();
+                var initialsLower = (c.initials || '').toLowerCase().replace(/\s+/g, '');
+                
+                return nameLower.includes(filterLower) ||
+                       pinyinLower.includes(filterLower) ||
+                       initialsLower.includes(filterNoSpace);
+            }).map(function(c) { return c.name; });
+            
+            if (matched.length === 0) {
+                var noResult = document.createElement('div');
+                noResult.className = 'no-result';
+                noResult.textContent = '无匹配结果';
+                dropdown.appendChild(noResult);
+                return;
+            }
+            
+            matched.forEach(function(name) {
+                var div = document.createElement('div');
+                div.textContent = name;
+                div.onclick = function(e) {
+                    e.stopPropagation();
+                    input.value = name;
+                    dropdown.style.display = 'none';
+                    document.getElementById('speaker').value = name;
+                };
+                dropdown.appendChild(div);
+            });
+        }
+        
+        function hideSpeakerDropdown() {
+            document.getElementById('speaker_dropdown').style.display = 'none';
+        }
+        
+        document.getElementById('speaker_search').addEventListener('input', function() {
+            var value = this.value;
+            if (!value) {
+                document.getElementById('speaker').value = '';
+            }
+            if (value) {
+                showSpeakerDropdown(value);
+            } else {
+                showSpeakerDropdown('');
+            }
+        });
+        
+        document.getElementById('speaker_search').addEventListener('focus', function() {
+            showSpeakerDropdown(this.value);
+        });
+        
+        document.addEventListener('click', function(e) {
+            var container = e.target.closest('.search-select-container');
+            if (!container) {
+                hideSpeakerDropdown();
+            }
+        });
+        
+        function showResult(success, message, audioUrl) {
+            var resultDiv = document.getElementById('result');
+            if (success) {
+                resultDiv.className = 'result success';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<p>' + message + '</p><audio controls src="' + audioUrl + '"></audio>';
+            } else {
+                resultDiv.className = 'result error';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<p>' + message + '</p>';
+            }
+        }
+        
+        async function generate() {
+            var btn = document.getElementById('generate');
+            btn.disabled = true;
+            btn.textContent = '生成中...';
+            
+            var text = document.getElementById('text').value;
+            var speaker = document.getElementById('speaker').value;
+            
+            if (!text) {
+                showResult(false, '请输入文本');
+                btn.disabled = false;
+                btn.textContent = '生成语音';
+                return;
+            }
+            
+            var url = '/?text=' + encodeURIComponent(text) + '&speaker=' + encodeURIComponent(speaker);
+            
+            try {
+                var resp = await fetch(url);
+                var contentType = resp.headers.get('content-type');
+                
+                if (contentType && contentType.indexOf('audio') !== -1) {
+                    var blob = await resp.blob();
+                    var url = URL.createObjectURL(blob);
+                    showResult(true, '生成成功', url);
+                } else {
+                    var text = await resp.text();
+                    showResult(false, text);
+                }
+            } catch (e) {
+                showResult(false, '错误: ' + e.message);
+            }
+            
+            btn.disabled = false;
+            btn.textContent = '生成语音';
+        }
+        
+        initSpeakerSelect();
+    </script>
+</body>
+</html>

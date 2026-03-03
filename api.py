@@ -13,6 +13,8 @@ import torchaudio
 from flask import Flask, request, send_file
 from flask_cors import CORS
 from loguru import logger
+from pypinyin import lazy_pinyin
+import opencc
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
@@ -25,6 +27,21 @@ OUTPUT_DIR = "./output"
 CONFIG_DIR = "./saved_configs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(CONFIG_DIR, exist_ok=True)
+
+opencc_converter = opencc.OpenCC("s2t")
+
+
+def get_pinyin(text):
+    if not text:
+        return ""
+    return "".join(lazy_pinyin(text))
+
+
+def get_pinyin_initials(text):
+    if not text:
+        return ""
+    pinyin_list = lazy_pinyin(text)
+    return "".join([p[0] if p else "" for p in pinyin_list])
 
 
 def copy_audio_to_config_dir(audio_path, config_name):
@@ -152,6 +169,14 @@ def create_api(model):
             [f'<option value="{c}">{c}</option>' for c in config_list]
         )
 
+        config_list_json = json.dumps(
+            [
+                {"name": c, "pinyin": get_pinyin(c), "initials": get_pinyin_initials(c)}
+                for c in config_list
+            ],
+            ensure_ascii=False,
+        )
+
         if not text:
             return f"""<!DOCTYPE html>
 <html>
@@ -170,6 +195,11 @@ def create_api(model):
         audio {{ width: 100%; margin-top: 10px; }}
         .info {{ background: #e3f2fd; padding: 15px; border-radius: 4px; margin-bottom: 20px; border-left: 4px solid #2196F3; }}
         .container {{ background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+        .search-dropdown {{ position: absolute; max-height: 200px; overflow-y: auto; background: white; border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); z-index: 1000; }}
+        .search-dropdown div {{ padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }}
+        .search-dropdown div:last-child {{ border-bottom: none; }}
+        .search-dropdown div:hover {{ background: #f5f5f5; }}
+        .search-dropdown div.no-result {{ color: #999; cursor: default; }}
     </style>
 </head>
 <body>
@@ -183,16 +213,88 @@ def create_api(model):
             <label>输入文本：</label>
             <textarea id="text" rows="3" placeholder="请输入要合成语音的文本..."></textarea>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="position: relative;">
             <label>说话人配置：</label>
-            <select id="speaker" onchange="updateApiExample()">
-                {config_options if config_options else f'<option value="{default_speaker}">{default_speaker}</option>'}
-            </select>
+            <input type="text" id="speaker_search" placeholder="搜索说话人配置..." autocomplete="off">
+            <div id="speaker_dropdown" class="search-dropdown" style="display: none; width: 100%;"></div>
+            <input type="hidden" id="speaker" value="">
         </div>
         <button onclick="generate()">🎵 生成语音</button>
         <div id="result"></div>
     </div>
     <script>
+        var configDataList = {config_list_json};
+        
+        function showSpeakerDropdown(filter) {{
+            var dropdown = document.getElementById('speaker_dropdown');
+            var input = document.getElementById('speaker_search');
+            dropdown.innerHTML = '';
+            dropdown.style.display = 'block';
+            
+            var filterLower = filter.toLowerCase().trim();
+            var filterNoSpace = filterLower.replace(/\\s+/g, '');
+            
+            var matched = configDataList.filter(function(c) {{
+                var nameLower = c.name.toLowerCase();
+                var pinyinLower = (c.pinyin || '').toLowerCase();
+                var initialsLower = (c.initials || '').toLowerCase().replace(/\\s+/g, '');
+                
+                return nameLower.includes(filterLower) ||
+                       pinyinLower.includes(filterLower) ||
+                       initialsLower.includes(filterNoSpace);
+            }}).map(function(c) {{ return c.name; }});
+            
+            if (matched.length === 0) {{
+                var noResult = document.createElement('div');
+                noResult.className = 'no-result';
+                noResult.textContent = '无匹配结果';
+                dropdown.appendChild(noResult);
+                return;
+            }}
+            
+            matched.forEach(function(name) {{
+                var div = document.createElement('div');
+                div.textContent = name;
+                div.onclick = function(e) {{
+                    e.stopPropagation();
+                    input.value = name;
+                    document.getElementById('speaker').value = name;
+                    dropdown.style.display = 'none';
+                    updateApiExample();
+                }};
+                dropdown.appendChild(div);
+            }});
+        }}
+        
+        document.getElementById('speaker_search').addEventListener('input', function() {{
+            var value = this.value;
+            if (!value) {{
+                document.getElementById('speaker').value = '';
+            }}
+            if (value) {{
+                showSpeakerDropdown(value);
+            }} else {{
+                showSpeakerDropdown('');
+            }}
+        }});
+        
+        document.getElementById('speaker_search').addEventListener('focus', function() {{
+            showSpeakerDropdown(this.value);
+        }});
+        
+        document.addEventListener('click', function(e) {{
+            if (!e.target.closest('.form-group') || !e.target.closest('#speaker_search')) {{
+                document.getElementById('speaker_dropdown').style.display = 'none';
+            }}
+        }});
+        
+        // Set default value
+        if (configDataList.length > 0) {{
+            document.getElementById('speaker').value = configDataList[0].name;
+            document.getElementById('speaker_search').value = configDataList[0].name;
+            updateApiExample();
+        }}
+        
         function updateApiExample() {{
             const speaker = document.getElementById('speaker').value;
             const example = 'http://10.10.10.10:7860/?text=要合成的文本&speaker=' + encodeURIComponent(speaker);

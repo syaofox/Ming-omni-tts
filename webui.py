@@ -642,6 +642,34 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             border-top-color: #333;
             margin-bottom: -8px;
         }
+        .search-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        .search-dropdown div {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .search-dropdown div:last-child {
+            border-bottom: none;
+        }
+        .search-dropdown div:hover {
+            background: #f5f5f5;
+        }
+        .search-dropdown div.no-result {
+            color: #999;
+            cursor: default;
+        }
     </style>
 </head>
 <body>
@@ -770,7 +798,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     </div>
                     <div class="form-group">
                         <label>选择内置音色 (IP)：</label>
-                        <select id="tts_ip_select" onchange="selectIP(this.value)">
+                        <div class="search-select-container" style="position: relative;">
+                            <input type="text" id="ip_search" placeholder="搜索内置音色..." autocomplete="off" style="margin-bottom: 5px;">
+                            <div id="ip_dropdown" class="search-dropdown" style="display: none;"></div>
+                        </div>
+                        <select id="tts_ip_select" onchange="selectIP(this.value)" style="display: none;">
                             <option value="">请选择内置音色...</option>
                         </select>
                         <input type="hidden" id="tts_ip">
@@ -806,7 +838,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     <div class="col">
                         <div class="form-group">
                             <label>已保存配置：</label>
-                            <select id="config_list">
+                            <div class="search-select-container" style="position: relative;">
+                                <input type="text" id="config_search" placeholder="搜索已保存配置..." autocomplete="off" style="margin-bottom: 5px;">
+                                <div id="config_dropdown" class="search-dropdown" style="display: none;"></div>
+                            </div>
+                            <select id="config_list" style="display: none;">
                                 <option value="">加载配置...</option>
                             </select>
                         </div>
@@ -943,17 +979,126 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             }
         }
 
-        // Populate IP select dropdown
+        // IP data and dropdown handling
+        var ipList = [];
+        
         function initIPSelect() {
             var select = document.getElementById('tts_ip_select');
-            var ips = Object.keys(ipData).sort();
-            ips.forEach(function(ip) {
+            ipList = Object.keys(ipData).sort();
+            ipList.forEach(function(ip) {
                 var option = document.createElement('option');
                 option.value = ip;
                 option.textContent = ip;
                 select.appendChild(option);
             });
         }
+
+        function showIPDropdown(filter) {
+            var dropdown = document.getElementById('ip_dropdown');
+            var input = document.getElementById('ip_search');
+            dropdown.innerHTML = '';
+            dropdown.style.display = 'block';
+            
+            var matched = ipList.filter(function(ip) {
+                return ip.toLowerCase().includes(filter.toLowerCase());
+            });
+            
+            if (matched.length === 0) {
+                var noResult = document.createElement('div');
+                noResult.className = 'no-result';
+                noResult.textContent = '无匹配结果';
+                dropdown.appendChild(noResult);
+                return;
+            }
+            
+            matched.forEach(function(ip) {
+                var div = document.createElement('div');
+                div.textContent = ip;
+                div.onclick = function(e) {
+                    e.stopPropagation();
+                    input.value = ip;
+                    dropdown.style.display = 'none';
+                    selectIP(ip);
+                };
+                dropdown.appendChild(div);
+            });
+        }
+
+        function hideIPDropdown() {
+            document.getElementById('ip_dropdown').style.display = 'none';
+        }
+
+        document.getElementById('ip_search').addEventListener('input', function() {
+            var value = this.value;
+            if (value) {
+                showIPDropdown(value);
+            } else {
+                showIPDropdown('');
+            }
+        });
+
+        document.getElementById('ip_search').addEventListener('focus', function() {
+            showIPDropdown(this.value);
+        });
+
+        document.addEventListener('click', function(e) {
+            var container = e.target.closest('.search-select-container');
+            if (!container) {
+                hideIPDropdown();
+                hideConfigDropdown();
+            }
+        });
+
+        // Config data and dropdown handling
+        var configList = [];
+        
+        function showConfigDropdown(filter) {
+            var dropdown = document.getElementById('config_dropdown');
+            var input = document.getElementById('config_search');
+            dropdown.innerHTML = '';
+            dropdown.style.display = 'block';
+            
+            var matched = configList.filter(function(c) {
+                return c.toLowerCase().includes(filter.toLowerCase());
+            });
+            
+            if (matched.length === 0) {
+                var noResult = document.createElement('div');
+                noResult.className = 'no-result';
+                noResult.textContent = '无匹配结果';
+                dropdown.appendChild(noResult);
+                return;
+            }
+            
+            matched.forEach(function(c) {
+                var div = document.createElement('div');
+                div.textContent = c;
+                div.onclick = function(e) {
+                    e.stopPropagation();
+                    input.value = c;
+                    dropdown.style.display = 'none';
+                    document.getElementById('config_list').value = c;
+                };
+                dropdown.appendChild(div);
+            });
+        }
+
+        function hideConfigDropdown() {
+            document.getElementById('config_dropdown').style.display = 'none';
+        }
+
+        document.getElementById('config_search').addEventListener('input', function() {
+            var value = this.value;
+            if (value) {
+                showConfigDropdown(value);
+            } else {
+                showConfigDropdown('');
+            }
+        });
+
+        document.getElementById('config_search').addEventListener('focus', function() {
+            showConfigDropdown(this.value);
+        });
 
         // Handle IP selection
         function selectIP(ip) {
@@ -1241,6 +1386,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 var configs = await resp.json();
                 var select = document.getElementById('config_list');
                 select.innerHTML = '<option value="">加载配置...</option>';
+                configList = configs.slice();
                 configs.forEach(function(c) {
                     var opt = document.createElement('option');
                     opt.value = c;

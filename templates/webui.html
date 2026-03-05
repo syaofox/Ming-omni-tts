@@ -298,6 +298,13 @@ speaker_2: 你好！"></textarea>
                         </select>
                     </div>
                     <div class="form-group">
+                        <label>解码步数：</label>
+                        <div class="slider-group">
+                            <input type="range" id="bgm_max_decode_steps" min="200" max="600" step="50" value="400">
+                            <span id="bgm_max_decode_steps_val">400</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label>时长 (秒)：</label>
                         <div class="slider-group">
                             <input type="range" id="bgm_duration" min="30" max="60" step="1" value="35">
@@ -764,6 +771,7 @@ speaker_2: 你好！"></textarea>
             var data = {
                 task_type: 'BGM Generation',
                 text: text,
+                max_decode_steps: parseInt(document.getElementById('bgm_max_decode_steps').value),
                 emotion: '无',
                 dialect: '无',
                 style: '无',

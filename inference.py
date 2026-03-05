@@ -110,7 +110,7 @@ def generate_speech(
 
     if task_type == "零样本语音合成 (Zero-shot TTS)":
         use_spk_emb = prompt_audio is not None
-        use_zero_spk_emb = False
+        use_zero_spk_emb = not use_spk_emb
     elif task_type == "Instruct TTS":
         if prompt_audio is not None:
             use_spk_emb = True

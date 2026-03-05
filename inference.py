@@ -50,12 +50,18 @@ def build_instruction(
 
 
 def get_prompt_by_task_type(task_type):
-    if task_type == "语音合成 (TTS)":
+    if task_type == "语音合成 (TTS)" or task_type == "Instruct TTS":
+        return "Please generate speech based on the following description.\n"
+    elif task_type == "零样本语音合成 (Zero-shot TTS)":
         return "Please generate speech based on the following description.\n"
     elif task_type == "声音事件 (TTA)":
         return "Please generate audio events based on given text.\n"
-    elif task_type == "背景音乐 (BGM)":
+    elif task_type == "背景音乐 (BGM)" or task_type == "BGM Generation":
         return "Please generate music based on the following description.\n"
+    elif task_type == "Podcast":
+        return "Please generate speech based on the following description.\n"
+    elif task_type == "Speech with BGM":
+        return "Please generate speech with background music based on the following description.\n"
     else:
         return "Please generate speech based on the following description.\n"
 
@@ -102,9 +108,23 @@ def generate_speech(
     use_spk_emb = prompt_audio is not None
     use_zero_spk_emb = prompt_audio is None
 
-    if task_type in ["声音事件 (TTA)", "背景音乐 (BGM)"]:
+    if task_type == "零样本语音合成 (Zero-shot TTS)":
+        use_spk_emb = prompt_audio is not None
+        use_zero_spk_emb = False
+    elif task_type == "Instruct TTS":
+        if prompt_audio is not None:
+            use_spk_emb = True
+            use_zero_spk_emb = False
+        else:
+            use_spk_emb = False
+            use_zero_spk_emb = True
+
+    if task_type in ["声音事件 (TTA)", "背景音乐 (BGM)", "BGM Generation"]:
         use_spk_emb = False
         use_zero_spk_emb = False
+
+    if task_type in ["Podcast", "Speech with BGM"]:
+        return None, f"{task_type} 功能开发中，敬请期待"
 
     instruction = build_instruction(
         voice_description=voice_description,

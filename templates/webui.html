@@ -11,174 +11,308 @@
         <h1>Ming-Omni-TTS 语音合成</h1>
         
         <div class="tabs">
-            <button class="tab active" onclick="switchTab('tts')">语音合成 (TTS)</button>
-            <button class="tab" onclick="switchTab('tta')">声音事件 (TTA)</button>
-            <button class="tab" onclick="switchTab('bgm')">背景音乐 (BGM)</button>
+            <button class="tab active" onclick="switchTab('instruct_tts')">Instruct TTS</button>
+            <button class="tab" onclick="switchTab('zero_shot_tts')">Zero-shot TTS</button>
+            <button class="tab" onclick="switchTab('podcast')">Podcast</button>
+            <button class="tab" onclick="switchTab('speech_with_bgm')">Speech with BGM</button>
+            <button class="tab" onclick="switchTab('bgm')">BGM Generation</button>
+            <button class="tab" onclick="switchTab('tta')">Sound Effects (TTA)</button>
         </div>
 
-        <div id="tts" class="tab-content active">
-            <div class="row tts-row">
+        <!-- Instruct TTS -->
+        <div id="instruct_tts" class="tab-content active">
+            <div class="row">
                 <div class="col">
-                    <div class="config-section">
-                        <div class="form-group">
-                            <label>配置名称：</label>
-                            <div class="search-select-container" style="position: relative;">
-                                <input type="text" id="config_search" placeholder="输入配置名称或搜索..." autocomplete="off" style="margin-bottom: 5px;">
-                                <div id="config_dropdown" class="search-dropdown" style="display: none;"></div>
-                            </div>
-                            <select id="config_list" style="display: none;">
-                                <option value="">加载配置...</option>
-                            </select>
-                        </div>
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button onclick="loadConfig()">加载</button>
-                            <button class="secondary" onclick="saveConfig()">保存</button>
-                            <button class="danger" onclick="deleteConfig()">删除</button>
-                        </div>
-                        <div id="config_msg" class="config-msg"></div>
+                    <div class="form-group">
+                        <label>指令类型：</label>
+                        <select id="instruct_type" onchange="updateInstructVisibility()">
+                            <option value="emotion">Emotion (情感)</option>
+                            <option value="dialect">Dialect (方言)</option>
+                            <option value="ip">IP (人物)</option>
+                            <option value="style">Style (风格)</option>
+                            <option value="basic">Basic (基础)</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label>输入文本：</label>
-                        <textarea id="tts_text" rows="5" placeholder="请输入要合成语音的文本..."></textarea>
+                        <textarea id="instruct_text" rows="4" placeholder="请输入要合成语音的文本..."></textarea>
                     </div>
-                    <div class="form-group">
-                        <label>参考音频 (可选)：</label>
-                        <div class="drop-zone" id="tts_drop_zone">
-                            <input type="file" id="tts_prompt_audio" accept="audio/*">
+                    <div class="form-group" id="instruct_prompt_group">
+                        <label>参考音频 (可选，用于音色克隆)：</label>
+                        <div class="drop-zone" id="instruct_drop_zone">
+                            <input type="file" id="instruct_prompt_audio" accept="audio/*">
                             <p>拖拽音频文件到此处 或 点击选择</p>
                         </div>
-                        <div id="tts_prompt_audio_display"></div>
+                        <div id="instruct_prompt_audio_display"></div>
                     </div>
-                    <div class="form-group">
-                        <label>参考文本 (可选)：</label>
-                        <textarea id="tts_prompt_text" rows="2" placeholder="参考音频对应的文本..."></textarea>
-                    </div>
-                </div>
-                
-                <div class="col">
-                    <h3 class="section-title">音色控制</h3>
-                    <div class="form-group">
+                    
+                    <!-- Emotion Controls -->
+                    <div class="form-group instruct-detail" id="emotion_controls">
                         <label>情感：</label>
-                        <select id="tts_emotion">
-                            <option value="无">无</option>
+                        <select id="instruct_emotion">
                             <option value="高兴">高兴</option>
                             <option value="悲伤">悲伤</option>
                             <option value="愤怒">愤怒</option>
-                            <option value="惊讶">惊讶</option>
-                            <option value="恐惧">恐惧</option>
-                            <option value="厌恶">厌恶</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    
+                    <!-- Dialect Controls -->
+                    <div class="form-group instruct-detail" id="dialect_controls" style="display:none;">
                         <label>方言：</label>
-                        <select id="tts_dialect">
-                            <option value="无">无</option>
-                            <option value="普通话">普通话</option>
-                            <option value="广粤话">广粤话</option>
+                        <select id="instruct_dialect">
                             <option value="四川话">四川话</option>
-                            <option value="东北话">东北话</option>
-                            <option value="河南话">河南话</option>
+                            <option value="广粤话">广粤话</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>风格：</label>
-                        <select id="tts_style">
-                            <option value="无">无</option>
-                            <option value="正式">正式</option>
-                            <option value="casual">casual</option>
-                            <option value="新闻播报">新闻播报</option>
-                            <option value="讲故事">讲故事</option>
-                            <option value="ASMR耳语">ASMR耳语</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>内置音色 (IP)：</label>
+                    
+                    <!-- IP Controls -->
+                    <div class="form-group instruct-detail" id="ip_controls" style="display:none;">
+                        <label>人物选择 (IP)：</label>
                         <div class="search-select-container" style="position: relative;">
-                            <input type="text" id="ip_search" placeholder="搜索内置音色..." autocomplete="off" style="margin-bottom: 5px;">
+                            <input type="text" id="ip_search" placeholder="搜索内置人物..." autocomplete="off" style="margin-bottom: 5px;">
                             <div id="ip_dropdown" class="search-dropdown" style="display: none;"></div>
                         </div>
-                        <select id="tts_ip_select" onchange="selectIP(this.value)" style="display: none;">
-                            <option value="">请选择内置音色...</option>
+                        <input type="hidden" id="instruct_ip">
+                    </div>
+                    
+                    <!-- Style Controls -->
+                    <div class="form-group instruct-detail" id="style_controls" style="display:none;">
+                        <label>风格描述：</label>
+                        <textarea id="instruct_style" rows="2" placeholder="例如: Speak with a loud and powerful volume, showing male toughness and majesty."></textarea>
+                    </div>
+                    
+                    <!-- Basic Controls -->
+                    <div class="form-group instruct-detail" id="basic_controls" style="display:none;">
+                        <label>语速：</label>
+                        <select id="instruct_speed">
+                            <option value="慢速">慢速</option>
+                            <option value="中速" selected>中速</option>
+                            <option value="快速">快速</option>
                         </select>
-                        <input type="hidden" id="tts_ip">
+                        <label>音高：</label>
+                        <select id="instruct_pitch">
+                            <option value="低">低</option>
+                            <option value="中" selected>中</option>
+                            <option value="高">高</option>
+                        </select>
+                        <label>音量：</label>
+                        <select id="instruct_volume">
+                            <option value="低">低</option>
+                            <option value="中" selected>中</option>
+                            <option value="高">高</option>
+                        </select>
                     </div>
-                    <div class="form-group">
-                        <label>音色描述 (可选)：</label>
-                        <textarea id="tts_voice_description" rows="3" placeholder="例如: 这是一位温柔的母亲声音"></textarea>
-                        <div class="examples">
-                            <span onclick="setVoiceDesc('一位温柔的母亲声音，音色低沉浑厚，充满关爱')">一位温柔的母亲声音</span>
-                            <span onclick="setVoiceDesc('年轻的男性主播，声音清澈明亮，富有活力')">年轻的男性主播</span>
-                            <span onclick="setVoiceDesc('成熟的男性嗓音，声线低沉，带有一点沙哑')">成熟的男性嗓音</span>
-                            <span onclick="setVoiceDesc('可爱的小女孩声音，甜美清脆，充满元气')">可爱的小女孩声音</span>
-                            <span onclick="setVoiceDesc('ASMR耳语，气音重，音量极低，语速极慢')">ASMR耳语</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col">
-                    <h3 class="section-title">生成参数</h3>
-                    <div class="form-group">
-                        <label class="tooltip-label" data-tooltip="控制语音的播放速度">语速：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tts_speech_speed" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
-                            <span id="tts_speech_speed_val">1.0</span>
-                            <button type="button" class="reset-btn" onclick="resetSlider('tts_speech_speed')">↺</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="tooltip-label" data-tooltip="控制语音的音调高低">音高：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tts_pitch" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
-                            <span id="tts_pitch_val">1.0</span>
-                            <button type="button" class="reset-btn" onclick="resetSlider('tts_pitch')">↺</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="tooltip-label" data-tooltip="控制输出音频的音量大小">音量：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tts_volume" min="0.5" max="2.0" step="0.1" value="1.0" data-default="1.0">
-                            <span id="tts_volume_val">1.0</span>
-                            <button type="button" class="reset-btn" onclick="resetSlider('tts_volume')">↺</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="tooltip-label" data-tooltip="解码步数越多质量越高">解码步数：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tts_max_decode_steps" min="100" max="500" step="50" value="200" data-default="200">
-                            <span id="tts_max_decode_steps_val">200</span>
-                            <button type="button" class="reset-btn" onclick="resetSlider('tts_max_decode_steps')">↺</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="tooltip-label" data-tooltip="CFG强度，值越大越符合文本描述">CFG：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tts_cfg" min="1.0" max="8.0" step="0.5" value="2.0" data-default="2.0">
-                            <span id="tts_cfg_val">2.0</span>
-                            <button type="button" class="reset-btn" onclick="resetSlider('tts_cfg')">↺</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="tooltip-label" data-tooltip="影响生成音频的平滑度">Sigma：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tts_sigma" min="0.1" max="1.0" step="0.05" value="0.25" data-default="0.25">
-                            <span id="tts_sigma_val">0.25</span>
-                            <button type="button" class="reset-btn" onclick="resetSlider('tts_sigma')">↺</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="tooltip-label" data-tooltip="采样温度，值越大越随机">Temperature：</label>
-                        <div class="slider-group">
-                            <input type="range" id="tts_temperature" min="0.0" max="3.0" step="0.1" value="0.0" data-default="0.0">
-                            <span id="tts_temperature_val">0.0</span>
-                            <button type="button" class="reset-btn" onclick="resetSlider('tts_temperature')">↺</button>
-                        </div>
-                    </div>
-                    <button id="tts_generate" onclick="generateTTS()" class="generate-btn">生成语音</button>
-                    <div id="tts_result"></div>
+                    
+                    <button id="instruct_generate" onclick="generateInstructTTS()" class="generate-btn">生成语音</button>
+                    <div id="instruct_result"></div>
                 </div>
             </div>
         </div>
 
+        <!-- Zero-shot TTS -->
+        <div id="zero_shot_tts" class="tab-content">
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label>目标文本：</label>
+                        <textarea id="zs_text" rows="4" placeholder="请输入要合成语音的文本..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>参考音频 (3-7秒最佳，用于音色克隆)：</label>
+                        <div class="drop-zone" id="zs_drop_zone">
+                            <input type="file" id="zs_prompt_audio" accept="audio/*">
+                            <p>拖拽音频文件到此处 或 点击选择</p>
+                        </div>
+                        <div id="zs_prompt_audio_display"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>内置人物 (可选)：</label>
+                        <div class="search-select-container" style="position: relative;">
+                            <input type="text" id="zs_ip_search" placeholder="搜索内置人物..." autocomplete="off" style="margin-bottom: 5px;">
+                            <div id="zs_ip_dropdown" class="search-dropdown" style="display: none;"></div>
+                        </div>
+                        <input type="hidden" id="zs_instruct_ip">
+                    </div>
+                    <button id="zs_generate" onclick="generateZeroShotTTS()" class="generate-btn">克隆音色并生成语音</button>
+                    <div id="zs_result"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Podcast -->
+        <div id="podcast" class="tab-content">
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label>对话脚本：</label>
+                        <textarea id="pod_text" rows="6" placeholder="使用 'speaker_1:' 和 'speaker_2:' 来区分说话人。例如：
+speaker_1: 你好！
+speaker_2: 你好！"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Speaker 1 参考音频：</label>
+                        <div class="drop-zone" id="pod_drop_zone1">
+                            <input type="file" id="pod_prompt_audio1" accept="audio/*">
+                            <p>拖拽音频文件到此处 或 点击选择</p>
+                        </div>
+                        <div id="pod_prompt_audio_display1"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Speaker 2 参考音频：</label>
+                        <div class="drop-zone" id="pod_drop_zone2">
+                            <input type="file" id="pod_prompt_audio2" accept="audio/*">
+                            <p>拖拽音频文件到此处 或 点击选择</p>
+                        </div>
+                        <div id="pod_prompt_audio_display2"></div>
+                    </div>
+                    <button id="pod_generate" onclick="generatePodcast()" class="generate-btn">生成对话</button>
+                    <div id="pod_result"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Speech with BGM -->
+        <div id="speech_with_bgm" class="tab-content">
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label>语音文本：</label>
+                        <textarea id="swb_text" rows="4" placeholder="请输入语音文本..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>说话人参考音频：</label>
+                        <div class="drop-zone" id="swb_drop_zone">
+                            <input type="file" id="swb_prompt_audio" accept="audio/*">
+                            <p>拖拽音频文件到此处 或 点击选择</p>
+                        </div>
+                        <div id="swb_prompt_audio_display"></div>
+                    </div>
+                    <h4 class="section-title">BGM 描述</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>风格：</label>
+                            <select id="swb_genre">
+                                <option value="流行摇滚">流行摇滚</option>
+                                <option value="迪斯科">迪斯科</option>
+                                <option value="电子舞曲">电子舞曲</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>情绪：</label>
+                            <select id="swb_mood">
+                                <option value="快乐">快乐</option>
+                                <option value="兴奋">兴奋</option>
+                                <option value="活力四射">活力四射</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>乐器：</label>
+                            <select id="swb_instrument">
+                                <option value="电吉他">电吉他</option>
+                                <option value="合成铜管乐器">合成铜管乐器</option>
+                                <option value="架子鼓">架子鼓</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>主题：</label>
+                            <select id="swb_theme">
+                                <option value="生日">生日</option>
+                                <option value="旅行">旅行</option>
+                                <option value="运动">运动</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>SNR (信噪比)：</label>
+                        <div class="slider-group">
+                            <input type="range" id="swb_snr" min="0" max="20" step="0.5" value="10.0">
+                            <span id="swb_snr_val">10.0</span>
+                        </div>
+                        <p style="font-size:12px;color:#666;">较低的值意味着背景音乐更响</p>
+                    </div>
+                    <button id="swb_generate" onclick="generateSpeechWithBGM()" class="generate-btn">生成带背景音乐的语音</button>
+                    <div id="swb_result"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BGM Generation -->
+        <div id="bgm" class="tab-content">
+            <div class="row compact">
+                <div class="col">
+                    <div class="form-group">
+                        <label>音乐风格：</label>
+                        <select id="bgm_genre">
+                            <option value="独立民谣：吉他驱动">独立民谣：吉他驱动</option>
+                            <option value="当代古典音乐：钢琴驱动">当代古典音乐：钢琴驱动</option>
+                            <option value="现代流行抒情曲：钢琴驱动的">现代流行抒情曲：钢琴驱动</option>
+                            <option value="乡村音乐">乡村音乐</option>
+                            <option value="流行乐">流行乐</option>
+                            <option value="流行摇滚">流行摇滚</option>
+                            <option value="电子舞曲">电子舞曲</option>
+                            <option value="雷鬼顿">雷鬼顿</option>
+                            <option value="迪斯科">迪斯科</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>情绪：</label>
+                        <select id="bgm_mood">
+                            <option value="鼓舞人心/充满希望">鼓舞人心/充满希望</option>
+                            <option value="壮丽宏大">壮丽宏大</option>
+                            <option value="快乐">快乐</option>
+                            <option value="平静放松">平静放松</option>
+                            <option value="自信/坚定">自信/坚定</option>
+                            <option value="轻快无忧无虑">轻快无忧无虑</option>
+                            <option value="活力四射/精力充沛">活力四射/精力充沛</option>
+                            <option value="悲伤哀愁">悲伤哀愁</option>
+                            <option value="温暖/友善">温暖/友善</option>
+                            <option value="兴奋">兴奋</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>乐器：</label>
+                        <select id="bgm_instrument">
+                            <option value="低音鼓">低音鼓</option>
+                            <option value="电吉他">电吉他</option>
+                            <option value="合成拨弦">合成拨弦</option>
+                            <option value="合成铜管乐器">合成铜管乐器</option>
+                            <option value="架子鼓">架子鼓</option>
+                            <option value="定音鼓">定音鼓</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>主题：</label>
+                        <select id="bgm_theme">
+                            <option value="励志">励志</option>
+                            <option value="生日">生日</option>
+                            <option value="分手">分手</option>
+                            <option value="旅行">旅行</option>
+                            <option value="运动">运动</option>
+                            <option value="剧院音乐厅">剧院音乐厅</option>
+                            <option value="音乐现场">音乐现场</option>
+                            <option value="节日">节日</option>
+                            <option value="好时光">好时光</option>
+                            <option value="庆典与喜悦">庆典与喜悦</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>时长 (秒)：</label>
+                        <div class="slider-group">
+                            <input type="range" id="bgm_duration" min="30" max="60" step="1" value="35">
+                            <span id="bgm_duration_val">35</span>
+                        </div>
+                    </div>
+                    <button onclick="generateBGM()" class="generate-btn">生成背景音乐</button>
+                </div>
+                <div class="col">
+                    <div id="bgm_result"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sound Effects (TTA) -->
         <div id="tta" class="tab-content">
             <div class="row compact">
                 <div class="col">
@@ -223,73 +357,6 @@
                 </div>
             </div>
         </div>
-
-        <div id="bgm" class="tab-content">
-            <div class="row compact">
-                <div class="col">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>音乐风格：</label>
-                            <select id="bgm_genre">
-                                <option value="无">无</option>
-                                <option value="电子舞曲">电子舞曲</option>
-                                <option value="古典">古典</option>
-                                <option value="流行">流行</option>
-                                <option value="摇滚">摇滚</option>
-                                <option value="爵士">爵士</option>
-                                <option value="乡村">乡村</option>
-                                <option value="嘻哈">嘻哈</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>情绪：</label>
-                            <select id="bgm_mood">
-                                <option value="无">无</option>
-                                <option value="欢快">欢快</option>
-                                <option value="悲伤">悲伤</option>
-                                <option value="紧张">紧张</option>
-                                <option value="放松">放松</option>
-                                <option value="神秘">神秘</option>
-                                <option value="浪漫">浪漫</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>主乐器：</label>
-                            <select id="bgm_instrument">
-                                <option value="无">无</option>
-                                <option value="钢琴">钢琴</option>
-                                <option value="吉他">吉他</option>
-                                <option value="架子鼓">架子鼓</option>
-                                <option value="小提琴">小提琴</option>
-                                <option value="电吉他">电吉他</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>主题：</label>
-                            <select id="bgm_theme">
-                                <option value="无">无</option>
-                                <option value="节日">节日</option>
-                                <option value="运动">运动</option>
-                                <option value="放松">放松</option>
-                                <option value="工作">工作</option>
-                                <option value="电影">电影</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>解码步数：</label>
-                        <div class="slider-group">
-                            <input type="range" id="bgm_max_decode_steps" min="200" max="600" step="50" value="400">
-                            <span id="bgm_max_decode_steps_val">400</span>
-                        </div>
-                    </div>
-                    <button onclick="generateBGM()" class="generate-btn">生成音乐</button>
-                </div>
-                <div class="col">
-                    <div id="bgm_result"></div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -300,6 +367,7 @@
                 var resp = await fetch('/ip_data');
                 ipData = await resp.json();
                 initIPSelect();
+                initZSIPSelect();
             } catch (e) {
                 console.error('Failed to load IP data:', e);
             }
@@ -308,19 +376,16 @@
         var ipList = [];
         
         function initIPSelect() {
-            var select = document.getElementById('tts_ip_select');
             ipList = Object.keys(ipData).sort();
-            ipList.forEach(function(ip) {
-                var option = document.createElement('option');
-                option.value = ip;
-                option.textContent = ip;
-                select.appendChild(option);
-            });
         }
 
-        function showIPDropdown(filter) {
-            var dropdown = document.getElementById('ip_dropdown');
-            var input = document.getElementById('ip_search');
+        function initZSIPSelect() {
+            // Zero-shot IP uses same data
+        }
+
+        function showIPDropdown(inputId, dropdownId, hiddenId) {
+            var dropdown = document.getElementById(dropdownId);
+            var input = document.getElementById(inputId);
             dropdown.innerHTML = '';
             dropdown.style.display = 'block';
             
@@ -332,18 +397,10 @@
                 var nameLower = ip.toLowerCase();
                 var pinyinLower = (data.pinyin || '').toLowerCase();
                 var initialsLower = (data.initials || '').toLowerCase();
-                var tradLower = (data.traditional || '').toLowerCase();
-                var tradPinyinLower = (data.traditional_pinyin || '').toLowerCase();
-                var tradInitialsLower = (data.traditional_initials || '').toLowerCase();
-                var initialsNoSpace = initialsLower.replace(/\s+/g, '');
-                var tradInitialsNoSpace = tradInitialsLower.replace(/\s+/g, '');
                 
                 return nameLower.includes(filterLower) ||
                        pinyinLower.includes(filterLower) ||
-                       initialsNoSpace.includes(filterNoSpace) ||
-                       tradLower.includes(filterLower) ||
-                       tradPinyinLower.includes(filterLower) ||
-                       tradInitialsNoSpace.includes(filterNoSpace);
+                       initialsLower.includes(filterNoSpace);
             });
             
             if (matched.length === 0) {
@@ -361,7 +418,7 @@
                     e.stopPropagation();
                     input.value = ip;
                     dropdown.style.display = 'none';
-                    selectIP(ip);
+                    document.getElementById(hiddenId).value = ip;
                 };
                 dropdown.appendChild(div);
             });
@@ -369,142 +426,100 @@
 
         function hideIPDropdown() {
             document.getElementById('ip_dropdown').style.display = 'none';
+            document.getElementById('zs_ip_dropdown').style.display = 'none';
         }
 
         document.getElementById('ip_search').addEventListener('input', function() {
-            var value = this.value;
-            if (!value) {
-                document.getElementById('tts_ip').value = '';
-            }
-            if (value) {
-                showIPDropdown(value);
-            } else {
-                showIPDropdown('');
-            }
+            showIPDropdown('ip_search', 'ip_dropdown', 'instruct_ip');
         });
 
         document.getElementById('ip_search').addEventListener('focus', function() {
-            showIPDropdown(this.value);
+            showIPDropdown('ip_search', 'ip_dropdown', 'instruct_ip');
+        });
+
+        document.getElementById('zs_ip_search').addEventListener('input', function() {
+            showIPDropdown('zs_ip_search', 'zs_ip_dropdown', 'zs_instruct_ip');
+        });
+
+        document.getElementById('zs_ip_search').addEventListener('focus', function() {
+            showIPDropdown('zs_ip_search', 'zs_ip_dropdown', 'zs_instruct_ip');
         });
 
         document.addEventListener('click', function(e) {
             var container = e.target.closest('.search-select-container');
             if (!container) {
                 hideIPDropdown();
-                hideConfigDropdown();
             }
         });
 
-        var configList = [];
-        var configDataList = [];
-        
-        function showConfigDropdown(filter) {
-            var dropdown = document.getElementById('config_dropdown');
-            var input = document.getElementById('config_search');
-            dropdown.innerHTML = '';
-            dropdown.style.display = 'block';
+        function updateInstructVisibility() {
+            var instructType = document.getElementById('instruct_type').value;
             
-            var filterLower = filter.toLowerCase().trim();
-            var filterNoSpace = filterLower.replace(/\s+/g, '');
+            var promptGroup = document.getElementById('instruct_prompt_group');
+            var emotionControls = document.getElementById('emotion_controls');
+            var dialectControls = document.getElementById('dialect_controls');
+            var ipControls = document.getElementById('ip_controls');
+            var styleControls = document.getElementById('style_controls');
+            var basicControls = document.getElementById('basic_controls');
             
-            var matched = configDataList.filter(function(c) {
-                var nameLower = c.name.toLowerCase();
-                var pinyinLower = (c.pinyin || '').toLowerCase();
-                var initialsLower = (c.initials || '').toLowerCase().replace(/\s+/g, '');
-                
-                return nameLower.includes(filterLower) ||
-                       pinyinLower.includes(filterLower) ||
-                       initialsLower.includes(filterNoSpace);
-            }).map(function(c) { return c.name; });
-            
-            if (matched.length === 0) {
-                var noResult = document.createElement('div');
-                noResult.className = 'no-result';
-                noResult.textContent = '无匹配结果';
-                dropdown.appendChild(noResult);
-                return;
+            if (instructType === 'ip' || instructType === 'style') {
+                promptGroup.style.display = 'none';
+            } else {
+                promptGroup.style.display = 'block';
             }
             
-            matched.forEach(function(c) {
-                var div = document.createElement('div');
-                div.textContent = c;
-                div.onclick = function(e) {
-                    e.stopPropagation();
-                    input.value = c;
-                    dropdown.style.display = 'none';
-                    document.getElementById('config_list').value = c;
-                    loadConfig();
-                };
-                dropdown.appendChild(div);
+            emotionControls.style.display = instructType === 'emotion' ? 'block' : 'none';
+            dialectControls.style.display = instructType === 'dialect' ? 'block' : 'none';
+            ipControls.style.display = instructType === 'ip' ? 'block' : 'none';
+            styleControls.style.display = instructType === 'style' ? 'block' : 'none';
+            basicControls.style.display = instructType === 'basic' ? 'block' : 'none';
+        }
+
+        function initDropZone(dropZoneId, fileInputId, displayId) {
+            var dropZone = document.getElementById(dropZoneId);
+            var fileInput = document.getElementById(fileInputId);
+            
+            if (!dropZone || !fileInput) return;
+            
+            dropZone.addEventListener('click', function() {
+                fileInput.click();
+            });
+            
+            dropZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+            
+            dropZone.addEventListener('dragleave', function() {
+                dropZone.classList.remove('dragover');
+            });
+            
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                var files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    var event = new Event('change', { bubbles: true });
+                    fileInput.dispatchEvent(event);
+                }
+            });
+            
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    var file = this.files[0];
+                    var audioDisplay = document.getElementById(displayId);
+                    var url = URL.createObjectURL(file);
+                    audioDisplay.innerHTML = '<audio controls src="' + url + '"></audio><p style="font-size:12px;color:#666;">' + file.name + '</p>';
+                }
             });
         }
 
-        function hideConfigDropdown() {
-            document.getElementById('config_dropdown').style.display = 'none';
-        }
-
-        document.getElementById('config_search').addEventListener('input', function() {
-            var value = this.value;
-            if (!value) {
-                document.getElementById('config_list').value = '';
-            }
-            if (value) {
-                showConfigDropdown(value);
-            } else {
-                showConfigDropdown('');
-            }
-        });
-
-        document.getElementById('config_search').addEventListener('focus', function() {
-            showConfigDropdown(this.value);
-        });
-
-        function selectIP(ip) {
-            if (ip && ipData[ip]) {
-                document.getElementById('tts_ip').value = ip;
-                document.getElementById('tts_voice_description').value = ipData[ip].description || '';
-            } else {
-                document.getElementById('tts_ip').value = '';
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', loadIPData);
-
-        var dropZone = document.getElementById('tts_drop_zone');
-        var fileInput = document.getElementById('tts_prompt_audio');
-        
-        dropZone.addEventListener('click', function() {
-            fileInput.click();
-        });
-        
-        dropZone.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
-        
-        dropZone.addEventListener('dragleave', function() {
-            dropZone.classList.remove('dragover');
-        });
-        
-        dropZone.addEventListener('drop', function(e) {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            var files = e.dataTransfer.files;
-            if (files.length > 0) {
-                fileInput.files = files;
-                var event = new Event('change', { bubbles: true });
-                fileInput.dispatchEvent(event);
-            }
-        });
-        
-        fileInput.addEventListener('change', function() {
-            if (this.files && this.files[0]) {
-                var file = this.files[0];
-                var audioDisplay = document.getElementById('tts_prompt_audio_display');
-                var url = URL.createObjectURL(file);
-                audioDisplay.innerHTML = '<audio controls src="' + url + '"></audio><p style="font-size:12px;color:#666;">' + file.name + '</p>';
-            }
-        });
+        initDropZone('instruct_drop_zone', 'instruct_prompt_audio', 'instruct_prompt_audio_display');
+        initDropZone('zs_drop_zone', 'zs_prompt_audio', 'zs_prompt_audio_display');
+        initDropZone('pod_drop_zone1', 'pod_prompt_audio1', 'pod_prompt_audio_display1');
+        initDropZone('pod_drop_zone2', 'pod_prompt_audio2', 'pod_prompt_audio_display2');
+        initDropZone('swb_drop_zone', 'swb_prompt_audio', 'swb_prompt_audio_display');
         
         document.querySelectorAll('input[type="range"]').forEach(function(slider) {
             slider.addEventListener('input', function() {
@@ -520,10 +535,6 @@
             document.getElementById(tabId).classList.add('active');
         }
 
-        function setVoiceDesc(text) {
-            document.getElementById('tts_voice_description').value = text;
-        }
-
         function showResult(id, success, message, audioUrl) {
             var resultDiv = document.getElementById(id + '_result');
             if (success) {
@@ -533,26 +544,6 @@
                 resultDiv.className = 'result error';
                 resultDiv.innerHTML = '<p>' + message + '</p>';
             }
-        }
-
-        function getFormData(prefix) {
-            return {
-                text: document.getElementById(prefix + '_text').value,
-                prompt_audio: document.getElementById(prefix + '_prompt_audio') ? document.getElementById(prefix + '_prompt_audio').dataset.filepath : null,
-                prompt_text: document.getElementById(prefix + '_prompt_text') ? document.getElementById(prefix + '_prompt_text').value : null,
-                emotion: document.getElementById(prefix + '_emotion') ? document.getElementById(prefix + '_emotion').value : '无',
-                dialect: document.getElementById(prefix + '_dialect') ? document.getElementById(prefix + '_dialect').value : '无',
-                style: document.getElementById(prefix + '_style') ? document.getElementById(prefix + '_style').value : '无',
-                speech_speed: document.getElementById(prefix + '_speech_speed') ? parseFloat(document.getElementById(prefix + '_speech_speed').value) : 1.0,
-                pitch: document.getElementById(prefix + '_pitch') ? parseFloat(document.getElementById(prefix + '_pitch').value) : 1.0,
-                volume: document.getElementById(prefix + '_volume') ? parseFloat(document.getElementById(prefix + '_volume').value) : 1.0,
-                max_decode_steps: document.getElementById(prefix + '_max_decode_steps') ? parseInt(document.getElementById(prefix + '_max_decode_steps').value) : 200,
-                cfg: document.getElementById(prefix + '_cfg') ? parseFloat(document.getElementById(prefix + '_cfg').value) : 2.0,
-                sigma: document.getElementById(prefix + '_sigma') ? parseFloat(document.getElementById(prefix + '_sigma').value) : 0.25,
-                temperature: document.getElementById(prefix + '_temperature') ? parseFloat(document.getElementById(prefix + '_temperature').value) : 0.0,
-                voice_description: document.getElementById(prefix + '_voice_description') ? document.getElementById(prefix + '_voice_description').value : null,
-                ip: document.getElementById(prefix + '_ip') ? document.getElementById(prefix + '_ip').value : null,
-            };
         }
 
         async function uploadAudioIfNeeded(inputId) {
@@ -570,35 +561,75 @@
             return null;
         }
 
-        async function generateTTS() {
-            var btn = document.getElementById('tts_generate');
+        async function generateInstructTTS() {
+            var btn = document.getElementById('instruct_generate');
             btn.disabled = true;
             
             var startTime = Date.now();
             var timer = null;
-            var resultDiv = document.getElementById('tts_result');
+            var resultDiv = document.getElementById('instruct_result');
             resultDiv.className = 'result';
-            resultDiv.innerHTML = '<p>生成中... <span id="tts_elapsed">0.0</span> 秒</span></p>';
+            resultDiv.innerHTML = '<p>生成中... <span id="instruct_elapsed">0.0</span> 秒</span></p>';
             
             timer = setInterval(function() {
                 var elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-                var elapsedSpan = document.getElementById('tts_elapsed');
+                var elapsedSpan = document.getElementById('instruct_elapsed');
                 if (elapsedSpan) elapsedSpan.textContent = elapsed;
             }, 100);
 
-            var text = document.getElementById('tts_text').value;
+            var text = document.getElementById('instruct_text').value;
             if (!text) {
                 clearInterval(timer);
-                showResult('tts', false, '请输入文本');
+                showResult('instruct', false, '请输入文本');
                 btn.disabled = false;
                 btn.textContent = '生成语音';
                 return;
             }
 
-            await uploadAudioIfNeeded('tts_prompt_audio');
+            var instructType = document.getElementById('instruct_type').value;
+            var promptAudio = null;
+            
+            if (instructType !== 'ip' && instructType !== 'style') {
+                promptAudio = await uploadAudioIfNeeded('instruct_prompt_audio');
+            }
 
-            var data = getFormData('tts');
-            data.task_type = '语音合成 (TTS)';
+            var emotion = '无';
+            var dialect = '无';
+            var style = '无';
+            var ip = null;
+            var speechSpeed = 1.0;
+            var pitch = 1.0;
+            var volume = 1.0;
+
+            if (instructType === 'emotion') {
+                emotion = document.getElementById('instruct_emotion').value;
+            } else if (instructType === 'dialect') {
+                dialect = document.getElementById('instruct_dialect').value;
+            } else if (instructType === 'ip') {
+                ip = document.getElementById('instruct_ip').value;
+            } else if (instructType === 'style') {
+                style = document.getElementById('instruct_style').value;
+            } else if (instructType === 'basic') {
+                var speedMap = {'慢速': 0.7, '中速': 1.0, '快速': 1.3};
+                var pitchMap = {'低': 0.8, '中': 1.0, '高': 1.2};
+                var volumeMap = {'低': 0.7, '中': 1.0, '高': 1.3};
+                speechSpeed = speedMap[document.getElementById('instruct_speed').value];
+                pitch = pitchMap[document.getElementById('instruct_pitch').value];
+                volume = volumeMap[document.getElementById('instruct_volume').value];
+            }
+
+            var data = {
+                task_type: 'Instruct TTS',
+                text: text,
+                prompt_audio: promptAudio,
+                emotion: emotion,
+                dialect: dialect,
+                style: style,
+                ip: ip,
+                speech_speed: speechSpeed,
+                pitch: pitch,
+                volume: volume,
+            };
 
             try {
                 var resp = await fetch('/generate', {
@@ -610,17 +641,158 @@
                 clearInterval(timer);
                 var totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
                 if (result.success) {
-                    showResult('tts', true, result.message + ' (用时: ' + totalTime + '秒)', result.audio_url);
+                    showResult('instruct', true, result.message + ' (用时: ' + totalTime + '秒)', result.audio_url);
                 } else {
-                    showResult('tts', false, result.message);
+                    showResult('instruct', false, result.message);
                 }
             } catch (e) {
                 clearInterval(timer);
-                showResult('tts', false, '错误: ' + e.message);
+                showResult('instruct', false, '错误: ' + e.message);
             }
 
             btn.disabled = false;
             btn.textContent = '生成语音';
+        }
+
+        async function generateZeroShotTTS() {
+            var btn = document.getElementById('zs_generate');
+            btn.disabled = true;
+            
+            var startTime = Date.now();
+            var timer = null;
+            var resultDiv = document.getElementById('zs_result');
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<p>生成中... <span id="zs_elapsed">0.0</span> 秒</span></p>';
+            
+            timer = setInterval(function() {
+                var elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                var elapsedSpan = document.getElementById('zs_elapsed');
+                if (elapsedSpan) elapsedSpan.textContent = elapsed;
+            }, 100);
+
+            var text = document.getElementById('zs_text').value;
+            var promptAudio = await uploadAudioIfNeeded('zs_prompt_audio');
+            var ip = document.getElementById('zs_instruct_ip').value;
+
+            if (!text) {
+                clearInterval(timer);
+                showResult('zs', false, '请输入文本');
+                btn.disabled = false;
+                return;
+            }
+
+            if (!promptAudio && !ip) {
+                clearInterval(timer);
+                showResult('zs', false, '请上传参考音频或选择内置人物');
+                btn.disabled = false;
+                return;
+            }
+
+            var data = {
+                task_type: '零样本语音合成 (Zero-shot TTS)',
+                text: text,
+                prompt_audio: promptAudio,
+                ip: ip || null,
+            };
+
+            try {
+                var resp = await fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                var result = await resp.json();
+                clearInterval(timer);
+                var totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                if (result.success) {
+                    showResult('zs', true, result.message + ' (用时: ' + totalTime + '秒)', result.audio_url);
+                } else {
+                    showResult('zs', false, result.message);
+                }
+            } catch (e) {
+                clearInterval(timer);
+                showResult('zs', false, '错误: ' + e.message);
+            }
+
+            btn.disabled = false;
+            btn.textContent = '克隆音色并生成语音';
+        }
+
+        async function generatePodcast() {
+            var btn = document.getElementById('pod_generate');
+            btn.disabled = true;
+            
+            var resultDiv = document.getElementById('pod_result');
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<p>功能开发中，敬请期待...</p>';
+
+            btn.disabled = false;
+        }
+
+        async function generateSpeechWithBGM() {
+            var btn = document.getElementById('swb_generate');
+            btn.disabled = true;
+            
+            var resultDiv = document.getElementById('swb_result');
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<p>功能开发中，敬请期待...</p>';
+
+            btn.disabled = false;
+        }
+
+        async function generateBGM() {
+            var startTime = Date.now();
+            var timer = null;
+            var resultDiv = document.getElementById('bgm_result');
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<p>生成中... <span id="bgm_elapsed">0.0</span> 秒</p>';
+            
+            timer = setInterval(function() {
+                var elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                var elapsedSpan = document.getElementById('bgm_elapsed');
+                if (elapsedSpan) elapsedSpan.textContent = elapsed;
+            }, 100);
+
+            var genre = document.getElementById('bgm_genre').value;
+            var mood = document.getElementById('bgm_mood').value;
+            var instrument = document.getElementById('bgm_instrument').value;
+            var theme = document.getElementById('bgm_theme').value;
+            var duration = document.getElementById('bgm_duration').value;
+
+            var text = 'Genre: ' + genre + '. Mood: ' + mood + '. Instrument: ' + instrument + '. Theme: ' + theme + '. Duration: ' + duration + 's.';
+
+            var data = {
+                task_type: 'BGM Generation',
+                text: text,
+                emotion: '无',
+                dialect: '无',
+                style: '无',
+                speech_speed: 1.0,
+                pitch: 1.0,
+                volume: 1.0,
+                cfg: 2.0,
+                sigma: 0.25,
+                temperature: 0.0,
+            };
+
+            try {
+                var resp = await fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                var result = await resp.json();
+                clearInterval(timer);
+                var totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                if (result.success) {
+                    showResult('bgm', true, result.message + ' (用时: ' + totalTime + '秒)', result.audio_url);
+                } else {
+                    showResult('bgm', false, result.message);
+                }
+            } catch (e) {
+                clearInterval(timer);
+                showResult('bgm', false, '错误: ' + e.message);
+            }
         }
 
         async function generateTTA() {
@@ -672,197 +844,7 @@
             }
         }
 
-        async function generateBGM() {
-            var startTime = Date.now();
-            var timer = null;
-            var resultDiv = document.getElementById('bgm_result');
-            resultDiv.className = 'result';
-            resultDiv.innerHTML = '<p>生成中... <span id="bgm_elapsed">0.0</span> 秒</p>';
-            
-            timer = setInterval(function() {
-                var elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-                var elapsedSpan = document.getElementById('bgm_elapsed');
-                if (elapsedSpan) elapsedSpan.textContent = elapsed;
-            }, 100);
-
-            var genre = document.getElementById('bgm_genre').value;
-            var mood = document.getElementById('bgm_mood').value;
-            var instrument = document.getElementById('bgm_instrument').value;
-            var theme = document.getElementById('bgm_theme').value;
-
-            var textParts = [];
-            if (genre !== '无') textParts.push('Genre: ' + genre);
-            if (mood !== '无') textParts.push('Mood: ' + mood);
-            if (instrument !== '无') textParts.push('Instrument: ' + instrument);
-            if (theme !== '无') textParts.push('Theme: ' + theme);
-
-            var text = textParts.length > 0 ? ' ' + textParts.join(' ') : ' ';
-
-            var data = {
-                task_type: '背景音乐 (BGM)',
-                text: text,
-                max_decode_steps: parseInt(document.getElementById('bgm_max_decode_steps').value),
-                emotion: '无',
-                dialect: '无',
-                style: '无',
-                speech_speed: 1.0,
-                pitch: 1.0,
-                volume: 1.0,
-                cfg: 2.0,
-                sigma: 0.25,
-                temperature: 0.0,
-            };
-
-            try {
-                var resp = await fetch('/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                var result = await resp.json();
-                clearInterval(timer);
-                var totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-                if (result.success) {
-                    showResult('bgm', true, result.message + ' (用时: ' + totalTime + '秒)', result.audio_url);
-                } else {
-                    showResult('bgm', false, result.message);
-                }
-            } catch (e) {
-                clearInterval(timer);
-                showResult('bgm', false, '错误: ' + e.message);
-            }
-        }
-
-        var configDataList = [];
-        
-        async function loadConfigList() {
-            try {
-                var resp = await fetch('/configs');
-                var configs = await resp.json();
-                var select = document.getElementById('config_list');
-                select.innerHTML = '<option value="">加载配置...</option>';
-                configDataList = configs;
-                configList = configs.map(function(c) { return c.name; });
-                configs.forEach(function(c) {
-                    var opt = document.createElement('option');
-                    opt.value = c.name;
-                    opt.textContent = c.name;
-                    select.appendChild(opt);
-                });
-            } catch (e) {}
-        }
-
-        async function saveConfig() {
-            var configName = document.getElementById('config_search').value;
-            if (!configName) {
-                document.getElementById('config_msg').textContent = '请输入或选择配置名称';
-                return;
-            }
-
-            await uploadAudioIfNeeded('tts_prompt_audio');
-
-            var data = getFormData('tts');
-            data.config_name = configName;
-
-            try {
-                var resp = await fetch('/save_config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                var result = await resp.json();
-                document.getElementById('config_msg').textContent = result.message;
-                loadConfigList();
-            } catch (e) {
-                document.getElementById('config_msg').textContent = '错误: ' + e.message;
-            }
-        }
-
-        async function loadConfig() {
-            var configName = document.getElementById('config_list').value;
-            if (!configName) {
-                document.getElementById('config_msg').textContent = '请选择配置';
-                return;
-            }
-
-            try {
-                var resp = await fetch('/load_config?config_name=' + encodeURIComponent(configName));
-                var result = await resp.json();
-                if (result.success) {
-                    var data = result.data;
-                    document.getElementById('tts_prompt_text').value = data.prompt_text || '';
-                    
-                    var audioDisplay = document.getElementById('tts_prompt_audio_display');
-                    if (data.prompt_audio) {
-                        audioDisplay.innerHTML = '<audio controls src="/config_audio/' + encodeURIComponent(data.name) + '"></audio><p style="font-size:12px;color:#666;">已保存的参考音频(' + data.name + ')</p>';
-                        document.getElementById('tts_prompt_audio').dataset.filepath = data.prompt_audio;
-                    } else {
-                        audioDisplay.innerHTML = '';
-                    }
-                    document.getElementById('tts_emotion').value = data.emotion || '无';
-                    document.getElementById('tts_dialect').value = data.dialect || '无';
-                    document.getElementById('tts_style').value = data.style || '无';
-                    document.getElementById('tts_voice_description').value = data.voice_description || '';
-                    var ipValue = data.ip || '';
-                    document.getElementById('tts_ip').value = ipValue;
-                    document.getElementById('ip_search').value = ipValue;
-                    setSlider('tts_speech_speed', data.speech_speed || 1.0);
-                    setSlider('tts_pitch', data.pitch || 1.0);
-                    setSlider('tts_volume', data.volume || 1.0);
-                    setSlider('tts_max_decode_steps', data.max_decode_steps || 200);
-                    setSlider('tts_cfg', data.cfg || 2.0);
-                    setSlider('tts_sigma', data.sigma || 0.25);
-                    setSlider('tts_temperature', data.temperature || 0.0);
-                    document.getElementById('config_msg').textContent = result.message;
-                } else {
-                    document.getElementById('config_msg').textContent = result.message;
-                }
-            } catch (e) {
-                document.getElementById('config_msg').textContent = '错误: ' + e.message;
-            }
-        }
-
-        async function deleteConfig() {
-            var configName = document.getElementById('config_list').value;
-            if (!configName) {
-                document.getElementById('config_msg').textContent = '请选择配置';
-                return;
-            }
-
-            try {
-                var resp = await fetch('/delete_config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ config_name: configName })
-                });
-                var result = await resp.json();
-                document.getElementById('config_msg').textContent = result.message;
-                loadConfigList();
-            } catch (e) {
-                document.getElementById('config_msg').textContent = '错误: ' + e.message;
-            }
-        }
-
-        function resetSlider(id) {
-            var slider = document.getElementById(id);
-            if (slider) {
-                var defaultValue = slider.dataset.default || slider.value;
-                slider.value = defaultValue;
-                var span = document.getElementById(id + '_val');
-                if (span) span.textContent = defaultValue;
-            }
-        }
-
-        function setSlider(id, value) {
-            var slider = document.getElementById(id);
-            if (slider) {
-                slider.value = value;
-                var span = document.getElementById(id + '_val');
-                if (span) span.textContent = value;
-            }
-        }
-
-        loadConfigList();
+        loadIPData();
     </script>
 </body>
 </html>

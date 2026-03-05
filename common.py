@@ -97,12 +97,27 @@ def save_config(
     config_path = os.path.join(CONFIG_DIR, config_name)
 
     is_overwrite = os.path.exists(config_path)
+
+    # For overwrite: copy audio to temp location before deleting directory
+    temp_audio_path = None
+    if is_overwrite and prompt_audio:
+        if os.path.exists(prompt_audio):
+            temp_dir = tempfile.mkdtemp()
+            temp_audio_path = os.path.join(temp_dir, os.path.basename(prompt_audio))
+            shutil.copy2(prompt_audio, temp_audio_path)
+
     if is_overwrite:
         shutil.rmtree(config_path)
 
     os.makedirs(config_path, exist_ok=True)
 
-    copied_audio = copy_audio_to_config_dir(prompt_audio, config_name)
+    # Copy from temp location if exists, otherwise copy from original path
+    if temp_audio_path and os.path.exists(temp_audio_path):
+        copied_audio = copy_audio_to_config_dir(temp_audio_path, config_name)
+        # Clean up temp directory
+        shutil.rmtree(os.path.dirname(temp_audio_path))
+    else:
+        copied_audio = copy_audio_to_config_dir(prompt_audio, config_name)
 
     config_data = {
         "name": config_name,

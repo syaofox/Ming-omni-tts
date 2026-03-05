@@ -51,6 +51,12 @@ def copy_audio_to_config_dir(audio_path: str, config_name: str):
     if audio_path is None or audio_path == "":
         return None
 
+    if not os.path.isabs(audio_path) and audio_path.startswith("./"):
+        audio_path = os.path.abspath(audio_path)
+
+    if not os.path.exists(audio_path):
+        return None
+
     config_audio_dir = os.path.join(CONFIG_DIR, config_name, "audio")
     os.makedirs(config_audio_dir, exist_ok=True)
     audio_ext = os.path.splitext(audio_path)[1]
@@ -78,6 +84,12 @@ def save_config(
     ip=None,
     instruct_type=None,
 ):
+    from loguru import logger
+
+    logger.info(
+        f"save_config called: config_name={config_name}, task_type={task_type}, prompt_audio={prompt_audio}"
+    )
+
     if not config_name or not config_name.strip():
         return "请输入配置名称", False
 

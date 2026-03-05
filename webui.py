@@ -383,32 +383,51 @@ def create_webui(
 
     @app.route("/save_config", methods=["POST"])
     def api_save_config():
-        data = request.form or request.json
-        msg, success = save_config(
-            config_name=data.get("config_name"),
-            task_type=data.get("task_type"),
-            prompt_audio=data.get("prompt_audio"),
-            prompt_text=data.get("prompt_text"),
-            emotion=data.get("emotion"),
-            dialect=data.get("dialect"),
-            style=data.get("style"),
-            voice_description=data.get("voice_description"),
-            speech_speed=float(data.get("speech_speed", 1.0))
-            if data.get("speech_speed")
-            else None,
-            pitch=float(data.get("pitch", 1.0)) if data.get("pitch") else None,
-            volume=float(data.get("volume", 1.0)) if data.get("volume") else None,
-            max_decode_steps=int(data.get("max_decode_steps", 200))
-            if data.get("max_decode_steps")
-            else None,
-            cfg=float(data.get("cfg", 2.0)) if data.get("cfg") else None,
-            sigma=float(data.get("sigma", 0.25)) if data.get("sigma") else None,
-            temperature=float(data.get("temperature", 0.0))
-            if data.get("temperature")
-            else None,
-            ip=data.get("ip"),
-            instruct_type=data.get("instruct_type"),
-        )
+        logger.info(f"save_config request: {request}")
+        if request.is_json:
+            data = request.get_json()
+        elif request.form:
+            data = request.form.to_dict()
+        else:
+            logger.error(
+                f"save_config: Invalid request, is_json={request.is_json}, form={request.form}"
+            )
+            return jsonify({"success": False, "message": "Invalid request"}), 400
+
+        logger.info(f"save_config data: {data}")
+
+        try:
+            msg, success = save_config(
+                config_name=data.get("config_name"),
+                task_type=data.get("task_type"),
+                prompt_audio=data.get("prompt_audio"),
+                prompt_text=data.get("prompt_text"),
+                emotion=data.get("emotion"),
+                dialect=data.get("dialect"),
+                style=data.get("style"),
+                voice_description=data.get("voice_description"),
+                speech_speed=float(data.get("speech_speed", 1.0))
+                if data.get("speech_speed")
+                else None,
+                pitch=float(data.get("pitch", 1.0)) if data.get("pitch") else None,
+                volume=float(data.get("volume", 1.0)) if data.get("volume") else None,
+                max_decode_steps=int(data.get("max_decode_steps", 200))
+                if data.get("max_decode_steps")
+                else None,
+                cfg=float(data.get("cfg", 2.0)) if data.get("cfg") else None,
+                sigma=float(data.get("sigma", 0.25)) if data.get("sigma") else None,
+                temperature=float(data.get("temperature", 0.0))
+                if data.get("temperature")
+                else None,
+                ip=data.get("ip"),
+                instruct_type=data.get("instruct_type"),
+            )
+        except Exception as e:
+            import traceback
+
+            logger.error(f"save_config error: {e}\n{traceback.format_exc()}")
+            return jsonify({"success": False, "message": str(e)}), 500
+
         return jsonify({"success": success, "message": msg})
 
     @app.route("/load_config", methods=["GET"])

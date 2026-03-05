@@ -41,7 +41,6 @@
                         <button onclick="loadInstructConfig()" class="secondary" style="padding: 8px 16px; cursor: pointer;">加载</button>
                         <button onclick="showSaveInstructConfigModal()" class="secondary" style="padding: 8px 16px; cursor: pointer;">保存当前</button>
                     </div>
-                    <div id="instruct_config_msg" style="font-size: 12px; color: #666; margin-top: 5px;"></div>
                     <div class="form-group">
                         <label>指令类型：</label>
                         <select id="instruct_type" onchange="updateInstructVisibility()">
@@ -143,7 +142,6 @@
                         <button onclick="loadZeroShotConfig()" class="secondary" style="padding: 8px 16px; cursor: pointer;">加载</button>
                         <button onclick="showSaveZeroShotConfigModal()" class="secondary" style="padding: 8px 16px; cursor: pointer;">保存当前</button>
                     </div>
-                    <div id="zs_config_msg" style="font-size: 12px; color: #666; margin-top: 5px;"></div>
                     <div class="form-group">
                         <label>目标文本：</label>
                         <textarea id="zs_text" rows="4" placeholder="请输入要合成语音的文本..."></textarea>
@@ -617,11 +615,18 @@ speaker_2: 你好！"></textarea>
         }
 
         function showConfigMessage(msgId, message, isError) {
-            var msgDiv = document.getElementById(msgId);
-            msgDiv.textContent = message;
-            msgDiv.style.color = isError ? '#d9534f' : '#5cb85c';
+            var container = document.getElementById('toast-container');
+            var toast = document.createElement('div');
+            toast.className = 'toast ' + (isError ? 'error' : 'success');
+            toast.textContent = message;
+            container.appendChild(toast);
             setTimeout(function() {
-                msgDiv.textContent = '';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                toast.style.transition = 'all 0.3s ease-out';
+                setTimeout(function() {
+                    container.removeChild(toast);
+                }, 300);
             }, 3000);
         }
 
@@ -1400,7 +1405,37 @@ speaker_2: 你好！"></textarea>
         </div>
     </div>
 
+    <!-- Toast Notification -->
+    <div id="toast-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;"></div>
+
     <style>
+        .toast {
+            min-width: 250px;
+            padding: 16px 24px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease-out;
+        }
+        .toast.success {
+            background-color: #28a745;
+        }
+        .toast.error {
+            background-color: #dc3545;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
         .header {
             display: flex;
             justify-content: space-between;

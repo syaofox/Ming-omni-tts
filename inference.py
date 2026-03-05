@@ -92,6 +92,8 @@ def generate_speech(
     ip=None,
     output_path=None,
     seed=None,
+    bgm=None,
+    podcast_task=False,
 ):
     if not prompt_text:
         prompt_text = None
@@ -99,12 +101,16 @@ def generate_speech(
     if model is None:
         return None, "请先加载模型"
 
-    if not text.strip():
+    if not text.strip() and task_type != "Podcast":
         return None, "请输入文本内容"
 
-    text_list = preprocess_text(text)
-    if not text_list:
-        return None, "请输入文本内容"
+    # 处理 Podcast - 不按行分割文本
+    if task_type == "Podcast":
+        text_list = [text]  # Podcast 使用原始文本格式
+    else:
+        text_list = preprocess_text(text)
+        if not text_list:
+            return None, "请输入文本内容"
 
     use_spk_emb = prompt_audio is not None
     use_zero_spk_emb = prompt_audio is None
@@ -124,21 +130,39 @@ def generate_speech(
         use_spk_emb = False
         use_zero_spk_emb = False
 
-    if task_type in ["Podcast", "Speech with BGM"]:
-        return None, f"{task_type} 功能开发中，敬请期待"
+    # 处理 Podcast - 需要多说话人
+    if task_type == "Podcast":
+        use_spk_emb = True
+        use_zero_spk_emb = False
 
-    instruction = build_instruction(
-        voice_description=voice_description,
-        emotion=emotion,
-        dialect=dialect,
-        style=style,
-        speech_speed=speech_speed,
-        pitch=pitch,
-        volume=volume,
-        ip=ip,
-    )
+    # 处理 Speech with BGM - 使用 bgm 参数
+    if task_type == "Speech with BGM":
+        use_spk_emb = True
+        use_zero_spk_emb = False
+
+    # 构建 instruction
+    if task_type == "Speech with BGM" and bgm:
+        instruction = {"BGM": bgm}
+    else:
+        instruction = build_instruction(
+            voice_description=voice_description,
+            emotion=emotion,
+            dialect=dialect,
+            style=style,
+            speech_speed=speech_speed,
+            pitch=pitch,
+            volume=volume,
+            ip=ip,
+        )
 
     prompt = get_prompt_by_task_type(task_type)
+
+    # 对于 Podcast，使用原始 prompt_text（可以为 None）
+    use_prompt_text = (
+        prompt_text
+        if (task_type == "Podcast" or (prompt_audio and prompt_text))
+        else None
+    )
 
     try:
         if len(text_list) == 1:
@@ -149,7 +173,7 @@ def generate_speech(
                 use_zero_spk_emb=use_zero_spk_emb,
                 instruction=instruction,
                 prompt_wav_path=prompt_audio,
-                prompt_text=prompt_text if (prompt_audio and prompt_text) else None,
+                prompt_text=use_prompt_text,
                 max_decode_steps=max_decode_steps,
                 cfg=cfg,
                 sigma=sigma,
@@ -165,7 +189,7 @@ def generate_speech(
                 use_zero_spk_emb=use_zero_spk_emb,
                 instruction=instruction,
                 prompt_wav_path=prompt_audio,
-                prompt_text=prompt_text if (prompt_audio and prompt_text) else None,
+                prompt_text=use_prompt_text,
                 max_decode_steps=max_decode_steps,
                 cfg=cfg,
                 sigma=sigma,

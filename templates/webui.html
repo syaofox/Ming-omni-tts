@@ -746,13 +746,141 @@ speaker_2: 你好！"></textarea>
             btn.disabled = false;
         }
 
+        async function generatePodcast() {
+            var btn = document.getElementById('pod_generate');
+            btn.disabled = true;
+            
+            var startTime = Date.now();
+            var timer = null;
+            var resultDiv = document.getElementById('pod_result');
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<p>生成中... <span id="pod_elapsed">0.0</span> 秒</p>';
+            
+            timer = setInterval(function() {
+                var elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                var elapsedSpan = document.getElementById('pod_elapsed');
+                if (elapsedSpan) elapsedSpan.textContent = elapsed;
+            }, 100);
+
+            var text = document.getElementById('pod_text').value;
+            if (!text) {
+                clearInterval(timer);
+                showResult('pod', false, '请输入对话脚本');
+                btn.disabled = false;
+                return;
+            }
+
+            // 上传两个说话人的参考音频
+            var promptAudio1 = await uploadAudioIfNeeded('pod_prompt_audio1');
+            var promptAudio2 = await uploadAudioIfNeeded('pod_prompt_audio2');
+
+            if (!promptAudio1 || !promptAudio2) {
+                clearInterval(timer);
+                showResult('pod', false, '请上传两个说话人的参考音频');
+                btn.disabled = false;
+                return;
+            }
+
+            // 构造 prompt_wav_path 为数组
+            var promptAudio = [promptAudio1, promptAudio2];
+
+            var data = {
+                task_type: 'Podcast',
+                text: text,
+                prompt_audio: promptAudio,
+                seed: parseInt(document.getElementById('settings_seed').value) || null,
+            };
+
+            try {
+                var resp = await fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                var result = await resp.json();
+                clearInterval(timer);
+                var totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                if (result.success) {
+                    showResult('pod', true, result.message + ' (用时: ' + totalTime + '秒)', result.audio_url);
+                } else {
+                    showResult('pod', false, result.message);
+                }
+            } catch (e) {
+                clearInterval(timer);
+                showResult('pod', false, '错误: ' + e.message);
+            }
+
+            btn.disabled = false;
+        }
+
         async function generateSpeechWithBGM() {
             var btn = document.getElementById('swb_generate');
             btn.disabled = true;
             
+            var startTime = Date.now();
+            var timer = null;
             var resultDiv = document.getElementById('swb_result');
             resultDiv.className = 'result';
-            resultDiv.innerHTML = '<p>功能开发中，敬请期待...</p>';
+            resultDiv.innerHTML = '<p>生成中... <span id="swb_elapsed">0.0</span> 秒</p>';
+            
+            timer = setInterval(function() {
+                var elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                var elapsedSpan = document.getElementById('swb_elapsed');
+                if (elapsedSpan) elapsedSpan.textContent = elapsed;
+            }, 100);
+
+            var text = document.getElementById('swb_text').value;
+            if (!text) {
+                clearInterval(timer);
+                showResult('swb', false, '请输入语音文本');
+                btn.disabled = false;
+                return;
+            }
+
+            var promptAudio = await uploadAudioIfNeeded('swb_prompt_audio');
+            if (!promptAudio) {
+                clearInterval(timer);
+                showResult('swb', false, '请上传说话人参考音频');
+                btn.disabled = false;
+                return;
+            }
+
+            var genre = document.getElementById('swb_genre').value;
+            var mood = document.getElementById('swb_mood').value;
+            var instrument = document.getElementById('swb_instrument').value;
+            var theme = document.getElementById('swb_theme').value;
+            var snr = parseFloat(document.getElementById('swb_snr').value);
+
+            var data = {
+                task_type: 'Speech with BGM',
+                text: text,
+                prompt_audio: promptAudio,
+                genre: genre,
+                mood: mood,
+                instrument: instrument,
+                theme: theme,
+                snr: snr,
+                seed: parseInt(document.getElementById('settings_seed').value) || null,
+            };
+
+            try {
+                var resp = await fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                var result = await resp.json();
+                clearInterval(timer);
+                var totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                if (result.success) {
+                    showResult('swb', true, result.message + ' (用时: ' + totalTime + '秒)', result.audio_url);
+                } else {
+                    showResult('swb', false, result.message);
+                }
+            } catch (e) {
+                clearInterval(timer);
+                showResult('swb', false, '错误: ' + e.message);
+            }
 
             btn.disabled = false;
         }

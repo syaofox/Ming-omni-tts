@@ -453,6 +453,26 @@ def create_webui(
         ip = data.get("ip")
         seed = data.get("seed")
 
+        # BGM 参数
+        bgm = None
+        if task_type == "Speech with BGM":
+            genre = data.get("genre")
+            mood = data.get("mood")
+            instrument = data.get("instrument")
+            theme = data.get("theme")
+            snr = float(data.get("snr", 10.0))
+            bgm = {
+                "Genre": genre + "." if genre else "",
+                "Mood": mood + "." if mood else "",
+                "Instrument": instrument if instrument else "",
+                "Theme": theme + "." if theme else "",
+                "SNR": snr,
+                "ENV": None,
+            }
+
+        # Podcast 参数
+        podcast_task = task_type == "Podcast"
+
         from inference import generate_speech as _generate_speech
 
         output_filename = f"webui_{uuid.uuid4().hex}.wav"
@@ -478,6 +498,8 @@ def create_webui(
             ip=ip,
             output_path=output_path,
             seed=seed,
+            bgm=bgm,
+            podcast_task=podcast_task,
         )
 
         if result[0] is None:

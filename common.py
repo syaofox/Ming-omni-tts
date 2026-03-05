@@ -61,20 +61,22 @@ def copy_audio_to_config_dir(audio_path: str, config_name: str):
 
 def save_config(
     config_name: str,
+    task_type: str,
     prompt_audio,
-    prompt_text,
-    emotion,
-    dialect,
-    style,
-    voice_description,
-    speech_speed,
-    pitch,
-    volume,
-    max_decode_steps,
-    cfg,
-    sigma,
-    temperature,
+    prompt_text=None,
+    emotion=None,
+    dialect=None,
+    style=None,
+    voice_description=None,
+    speech_speed=None,
+    pitch=None,
+    volume=None,
+    max_decode_steps=None,
+    cfg=None,
+    sigma=None,
+    temperature=None,
     ip=None,
+    instruct_type=None,
 ):
     if not config_name or not config_name.strip():
         return "请输入配置名称", False
@@ -92,7 +94,7 @@ def save_config(
 
     config_data = {
         "name": config_name,
-        "task_type": "TTS",
+        "task_type": task_type,
         "prompt_audio": copied_audio,
         "prompt_text": prompt_text,
         "emotion": emotion,
@@ -107,6 +109,7 @@ def save_config(
         "sigma": sigma,
         "temperature": temperature,
         "ip": ip,
+        "instruct_type": instruct_type,
     }
 
     config_file = os.path.join(config_path, "config.json")
@@ -130,8 +133,12 @@ def get_config_list():
         if os.path.isdir(item_path):
             config_file = os.path.join(item_path, "config.json")
             if os.path.exists(config_file):
-                configs.append(item)
-    return sorted(configs)
+                with open(config_file, "r", encoding="utf-8") as f:
+                    config_data = json.load(f)
+                configs.append(
+                    {"name": item, "task_type": config_data.get("task_type", "TTS")}
+                )
+    return sorted(configs, key=lambda x: x["name"])
 
 
 def load_config(config_name: str):

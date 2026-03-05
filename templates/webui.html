@@ -31,6 +31,14 @@
         <div id="instruct_tts" class="tab-content active">
             <div class="row">
                 <div class="col">
+                    <div class="form-group" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <label>配置：</label>
+                        <select id="instruct_config_select" style="flex: 1; min-width: 150px;">
+                            <option value="">-- 选择已保存的配置 --</option>
+                        </select>
+                        <button onclick="loadInstructConfig()" class="secondary" style="padding: 8px 16px; cursor: pointer;">加载</button>
+                        <button onclick="showSaveInstructConfigModal()" class="secondary" style="padding: 8px 16px; cursor: pointer;">保存当前</button>
+                    </div>
                     <div class="form-group">
                         <label>指令类型：</label>
                         <select id="instruct_type" onchange="updateInstructVisibility()">
@@ -52,6 +60,7 @@
                             <p>拖拽音频文件到此处 或 点击选择</p>
                         </div>
                         <div id="instruct_prompt_audio_display"></div>
+                        <input type="hidden" id="instruct_config_audio_path">
                     </div>
                     
                     <!-- Emotion Controls -->
@@ -121,6 +130,14 @@
         <div id="zero_shot_tts" class="tab-content">
             <div class="row">
                 <div class="col">
+                    <div class="form-group" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <label>配置：</label>
+                        <select id="zs_config_select" style="flex: 1; min-width: 150px;">
+                            <option value="">-- 选择已保存的配置 --</option>
+                        </select>
+                        <button onclick="loadZeroShotConfig()" class="secondary" style="padding: 8px 16px; cursor: pointer;">加载</button>
+                        <button onclick="showSaveZeroShotConfigModal()" class="secondary" style="padding: 8px 16px; cursor: pointer;">保存当前</button>
+                    </div>
                     <div class="form-group">
                         <label>目标文本：</label>
                         <textarea id="zs_text" rows="4" placeholder="请输入要合成语音的文本..."></textarea>
@@ -132,6 +149,7 @@
                             <p>拖拽音频文件到此处 或 点击选择</p>
                         </div>
                         <div id="zs_prompt_audio_display"></div>
+                        <input type="hidden" id="zs_config_audio_path">
                     </div>
                     <div class="form-group">
                         <label>内置人物 (可选)：</label>
@@ -387,6 +405,7 @@ speaker_2: 你好！"></textarea>
 
     <script>
         var ipData = {};
+        var configList = [];
 
         async function loadIPData() {
             try {
@@ -396,6 +415,266 @@ speaker_2: 你好！"></textarea>
                 initZSIPSelect();
             } catch (e) {
                 console.error('Failed to load IP data:', e);
+            }
+        }
+
+        async function loadConfigList() {
+            try {
+                var resp = await fetch('/configs');
+                configList = await resp.json();
+                updateConfigDropdowns();
+            } catch (e) {
+                console.error('Failed to load config list:', e);
+            }
+        }
+
+        function updateConfigDropdowns() {
+            var instructSelect = document.getElementById('instruct_config_select');
+            var zsSelect = document.getElementById('zs_config_select');
+            
+            var instructConfigs = configList.filter(function(c) {
+                return c.task_type === 'Instruct TTS';
+            });
+            
+            var zeroShotConfigs = configList.filter(function(c) {
+                return c.task_type === 'Zero-shot TTS';
+            });
+            
+            if (instructSelect) {
+                instructSelect.innerHTML = '<option value="">-- 选择已保存的配置 --</option>';
+                instructConfigs.forEach(function(c) {
+                    var opt = document.createElement('option');
+                    opt.value = c.name;
+                    opt.textContent = c.name + ' (' + (c.pinyin || '') + ')';
+                    instructSelect.appendChild(opt);
+                });
+            }
+            
+            if (zsSelect) {
+                zsSelect.innerHTML = '<option value="">-- 选择已保存的配置 --</option>';
+                zeroShotConfigs.forEach(function(c) {
+                    var opt = document.createElement('option');
+                    opt.value = c.name;
+                    opt.textContent = c.name + ' (' + (c.pinyin || '') + ')';
+                    zsSelect.appendChild(opt);
+                });
+            }
+        }
+
+        async function loadInstructConfig() {
+            var select = document.getElementById('instruct_config_select');
+            var configName = select.value;
+            if (!configName) {
+                alert('请选择要加载的配置');
+                return;
+            }
+            
+            try {
+                var resp = await fetch('/load_config?config_name=' + encodeURIComponent(configName));
+                var result = await resp.json();
+                if (result.success) {
+                    var data = result.data;
+                    if (data.task_type !== 'Instruct TTS') {
+                        alert('该配置不是 Instruct TTS 类型的配置');
+                        return;
+                    }
+                    if (data.instruct_type) {
+                        document.getElementById('instruct_type').value = data.instruct_type;
+                        updateInstructVisibility();
+                    }
+                    if (data.prompt_audio) {
+                        displayConfigAudio(data.prompt_audio, 'instruct_prompt_audio_display');
+                        document.getElementById('instruct_config_audio_path').value = data.prompt_audio;
+                    } else {
+                        clearConfigAudio('instruct_prompt_audio_display');
+                        document.getElementById('instruct_config_audio_path').value = '';
+                    }
+                    if (data.emotion) {
+                        document.getElementById('instruct_emotion').value = data.emotion;
+                    }
+                    if (data.dialect) {
+                        document.getElementById('instruct_dialect').value = data.dialect;
+                    }
+                    if (data.ip) {
+                        document.getElementById('ip_search').value = data.ip;
+                        document.getElementById('instruct_ip').value = data.ip;
+                    }
+                    if (data.style) {
+                        document.getElementById('instruct_style').value = data.style;
+                    }
+                    if (data.speech_speed) {
+                        var speedMap = {0.7: '慢速', 1.0: '中速', 1.3: '快速'};
+                        document.getElementById('instruct_speed').value = speedMap[data.speech_speed] || '中速';
+                    }
+                    if (data.pitch) {
+                        var pitchMap = {0.8: '低', 1.0: '中', 1.2: '高'};
+                        document.getElementById('instruct_pitch').value = pitchMap[data.pitch] || '中';
+                    }
+                    if (data.volume) {
+                        var volumeMap = {0.7: '低', 1.0: '中', 1.3: '高'};
+                        document.getElementById('instruct_volume').value = volumeMap[data.volume] || '中';
+                    }
+                    alert('配置 "' + configName + '" 已加载');
+                } else {
+                    alert('加载失败: ' + result.message);
+                }
+            } catch (e) {
+                alert('加载失败: ' + e.message);
+            }
+        }
+
+        async function loadZeroShotConfig() {
+            var select = document.getElementById('zs_config_select');
+            var configName = select.value;
+            if (!configName) {
+                alert('请选择要加载的配置');
+                return;
+            }
+            
+            try {
+                var resp = await fetch('/load_config?config_name=' + encodeURIComponent(configName));
+                var result = await resp.json();
+                if (result.success) {
+                    var data = result.data;
+                    if (data.task_type !== 'Zero-shot TTS') {
+                        alert('该配置不是 Zero-shot TTS 类型的配置');
+                        return;
+                    }
+                    if (data.prompt_audio) {
+                        displayConfigAudio(data.prompt_audio, 'zs_prompt_audio_display');
+                        document.getElementById('zs_config_audio_path').value = data.prompt_audio;
+                    } else {
+                        clearConfigAudio('zs_prompt_audio_display');
+                        document.getElementById('zs_config_audio_path').value = '';
+                    }
+                    if (data.ip) {
+                        document.getElementById('zs_ip_search').value = data.ip;
+                        document.getElementById('zs_instruct_ip').value = data.ip;
+                    }
+                    alert('配置 "' + configName + '" 已加载');
+                } else {
+                    alert('加载失败: ' + result.message);
+                }
+            } catch (e) {
+                alert('加载失败: ' + e.message);
+            }
+        }
+
+        function showSaveInstructConfigModal() {
+            var configName = prompt('请输入配置名称:');
+            if (!configName || !configName.trim()) {
+                return;
+            }
+            saveInstructConfig(configName.trim());
+        }
+
+        async function saveInstructConfig(configName) {
+            var instructType = document.getElementById('instruct_type').value;
+            var promptAudio = null;
+            
+            if (instructType !== 'ip' && instructType !== 'style') {
+                var fileInput = document.getElementById('instruct_prompt_audio');
+                if (fileInput && fileInput.files && fileInput.files[0]) {
+                    promptAudio = await uploadAudioIfNeeded('instruct_prompt_audio');
+                }
+            }
+
+            var emotion = '无';
+            var dialect = '无';
+            var style = '无';
+            var ip = null;
+            var speechSpeed = 1.0;
+            var pitch = 1.0;
+            var volume = 1.0;
+
+            if (instructType === 'emotion') {
+                emotion = document.getElementById('instruct_emotion').value;
+            } else if (instructType === 'dialect') {
+                dialect = document.getElementById('instruct_dialect').value;
+            } else if (instructType === 'ip') {
+                ip = document.getElementById('instruct_ip').value;
+            } else if (instructType === 'style') {
+                style = document.getElementById('instruct_style').value;
+            } else if (instructType === 'basic') {
+                var speedMap = {'慢速': 0.7, '中速': 1.0, '快速': 1.3};
+                var pitchMap = {'低': 0.8, '中': 1.0, '高': 1.2};
+                var volumeMap = {'低': 0.7, '中': 1.0, '高': 1.3};
+                speechSpeed = speedMap[document.getElementById('instruct_speed').value];
+                pitch = pitchMap[document.getElementById('instruct_pitch').value];
+                volume = volumeMap[document.getElementById('instruct_volume').value];
+            }
+
+            var data = {
+                config_name: configName,
+                task_type: 'Instruct TTS',
+                instruct_type: instructType,
+                prompt_audio: promptAudio,
+                emotion: emotion,
+                dialect: dialect,
+                style: style,
+                ip: ip,
+                speech_speed: speechSpeed,
+                pitch: pitch,
+                volume: volume,
+            };
+
+            try {
+                var resp = await fetch('/save_config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                var result = await resp.json();
+                if (result.success) {
+                    alert(result.message);
+                    loadConfigList();
+                } else {
+                    alert('保存失败: ' + result.message);
+                }
+            } catch (e) {
+                alert('保存失败: ' + e.message);
+            }
+        }
+
+        function showSaveZeroShotConfigModal() {
+            var configName = prompt('请输入配置名称:');
+            if (!configName || !configName.trim()) {
+                return;
+            }
+            saveZeroShotConfig(configName.trim());
+        }
+
+        async function saveZeroShotConfig(configName) {
+            var fileInput = document.getElementById('zs_prompt_audio');
+            var promptAudio = null;
+            if (fileInput && fileInput.files && fileInput.files[0]) {
+                promptAudio = await uploadAudioIfNeeded('zs_prompt_audio');
+            }
+
+            var ip = document.getElementById('zs_instruct_ip').value;
+
+            var data = {
+                config_name: configName,
+                task_type: 'Zero-shot TTS',
+                prompt_audio: promptAudio,
+                ip: ip || null,
+            };
+
+            try {
+                var resp = await fetch('/save_config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                var result = await resp.json();
+                if (result.success) {
+                    alert(result.message);
+                    loadConfigList();
+                } else {
+                    alert('保存失败: ' + result.message);
+                }
+            } catch (e) {
+                alert('保存失败: ' + e.message);
             }
         }
 
@@ -542,6 +821,26 @@ speaker_2: 你好！"></textarea>
             });
         }
 
+        function displayConfigAudio(audioPath, displayId) {
+            var audioDisplay = document.getElementById(displayId);
+            if (audioPath) {
+                var match = audioPath.match(/saved_configs[/\\]([^/\\]+)/);
+                var configName = match ? match[1] : null;
+                if (configName) {
+                    audioDisplay.innerHTML = '<audio controls src="/config_audio/' + encodeURIComponent(configName) + '"></audio><p style="font-size:12px;color:#666;">已加载参考音频</p>';
+                } else {
+                    audioDisplay.innerHTML = '<p style="font-size:12px;color:#666;">音频路径无效</p>';
+                }
+            } else {
+                audioDisplay.innerHTML = '';
+            }
+        }
+
+        function clearConfigAudio(displayId) {
+            var audioDisplay = document.getElementById(displayId);
+            audioDisplay.innerHTML = '';
+        }
+
         initDropZone('instruct_drop_zone', 'instruct_prompt_audio', 'instruct_prompt_audio_display');
         initDropZone('zs_drop_zone', 'zs_prompt_audio', 'zs_prompt_audio_display');
         initDropZone('pod_drop_zone1', 'pod_prompt_audio1', 'pod_prompt_audio_display1');
@@ -619,6 +918,9 @@ speaker_2: 你好！"></textarea>
             
             if (instructType !== 'ip' && instructType !== 'style') {
                 promptAudio = await uploadAudioIfNeeded('instruct_prompt_audio');
+                if (!promptAudio) {
+                    promptAudio = document.getElementById('instruct_config_audio_path').value || null;
+                }
             }
 
             var emotion = '无';
@@ -701,6 +1003,9 @@ speaker_2: 你好！"></textarea>
 
             var text = document.getElementById('zs_text').value;
             var promptAudio = await uploadAudioIfNeeded('zs_prompt_audio');
+            if (!promptAudio) {
+                promptAudio = document.getElementById('zs_config_audio_path').value || null;
+            }
             var ip = document.getElementById('zs_instruct_ip').value;
 
             if (!text) {
@@ -998,6 +1303,7 @@ speaker_2: 你好！"></textarea>
         }
 
         loadIPData();
+        loadConfigList();
         loadSeed();
     </script>
 

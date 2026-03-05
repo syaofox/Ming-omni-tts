@@ -346,11 +346,13 @@ def create_webui(
         configs = get_config_list()
         configs_with_pinyin = []
         for c in configs:
+            config_name = c["name"]
             configs_with_pinyin.append(
                 {
-                    "name": c,
-                    "pinyin": get_pinyin(c),
-                    "initials": get_pinyin_initials(c),
+                    "name": config_name,
+                    "task_type": c.get("task_type", "TTS"),
+                    "pinyin": get_pinyin(config_name),
+                    "initials": get_pinyin_initials(config_name),
                 }
             )
         return jsonify(configs_with_pinyin)
@@ -384,20 +386,28 @@ def create_webui(
         data = request.form or request.json
         msg, success = save_config(
             config_name=data.get("config_name"),
+            task_type=data.get("task_type"),
             prompt_audio=data.get("prompt_audio"),
             prompt_text=data.get("prompt_text"),
             emotion=data.get("emotion"),
             dialect=data.get("dialect"),
             style=data.get("style"),
             voice_description=data.get("voice_description"),
-            speech_speed=float(data.get("speech_speed", 1.0)),
-            pitch=float(data.get("pitch", 1.0)),
-            volume=float(data.get("volume", 1.0)),
-            max_decode_steps=int(data.get("max_decode_steps", 200)),
-            cfg=float(data.get("cfg", 2.0)),
-            sigma=float(data.get("sigma", 0.25)),
-            temperature=float(data.get("temperature", 0.0)),
+            speech_speed=float(data.get("speech_speed", 1.0))
+            if data.get("speech_speed")
+            else None,
+            pitch=float(data.get("pitch", 1.0)) if data.get("pitch") else None,
+            volume=float(data.get("volume", 1.0)) if data.get("volume") else None,
+            max_decode_steps=int(data.get("max_decode_steps", 200))
+            if data.get("max_decode_steps")
+            else None,
+            cfg=float(data.get("cfg", 2.0)) if data.get("cfg") else None,
+            sigma=float(data.get("sigma", 0.25)) if data.get("sigma") else None,
+            temperature=float(data.get("temperature", 0.0))
+            if data.get("temperature")
+            else None,
             ip=data.get("ip"),
+            instruct_type=data.get("instruct_type"),
         )
         return jsonify({"success": success, "message": msg})
 

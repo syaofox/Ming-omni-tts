@@ -5,46 +5,8 @@
     <title>Ming-Omni-TTS API</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
-    <style>
-        body {
-            max-width: 600px;
-            margin: 50px auto;
-        }
-        .container {
-            padding: 30px;
-        }
-        h1 {
-            margin-bottom: 30px;
-        }
-        label {
-            color: #555;
-        }
-        input[type="text"], textarea, select {
-            padding: 12px;
-        }
-        button {
-            width: 100%;
-            padding: 14px;
-            margin-top: 10px;
-        }
-        .result {
-            display: none;
-        }
-        .example {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f9f9f9;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #666;
-        }
-        .example code {
-            background: #eee;
-            padding: 2px 6px;
-            border-radius: 3px;
-            word-break: break-all;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='api.css') }}">
+    <script src="{{ url_for('static', filename='common.js') }}"></script>
 </head>
 <body>
     <div class="container">
@@ -161,19 +123,6 @@
             }
         });
         
-        function showResult(success, message, audioUrl) {
-            var resultDiv = document.getElementById('result');
-            if (success) {
-                resultDiv.className = 'result success';
-                resultDiv.style.display = 'block';
-                resultDiv.innerHTML = '<p>' + message + '</p><audio controls src="' + audioUrl + '"></audio>';
-            } else {
-                resultDiv.className = 'result error';
-                resultDiv.style.display = 'block';
-                resultDiv.innerHTML = '<p>' + message + '</p>';
-            }
-        }
-        
         async function generate() {
             var btn = document.getElementById('generate');
             btn.disabled = true;
@@ -183,7 +132,7 @@
             var speaker = document.getElementById('speaker').value;
             
             if (!text) {
-                showResult(false, '请输入文本');
+                showResult('result', false, '请输入文本');
                 btn.disabled = false;
                 btn.textContent = '生成语音';
                 return;
@@ -198,13 +147,13 @@
                 if (contentType && contentType.indexOf('audio') !== -1) {
                     var blob = await resp.blob();
                     var url = URL.createObjectURL(blob);
-                    showResult(true, '生成成功', url);
+                    showResult('result', true, '生成成功', url);
                 } else {
                     var text = await resp.text();
-                    showResult(false, text);
+                    showResult('result', false, text);
                 }
             } catch (e) {
-                showResult(false, '错误: ' + e.message);
+                showResult('result', false, '错误: ' + e.message);
             }
             
             btn.disabled = false;

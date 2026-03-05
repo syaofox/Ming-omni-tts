@@ -5,6 +5,7 @@
     <title>Ming-Omni-TTS WebUI</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+    <script src="{{ url_for('static', filename='common.js') }}"></script>
 </head>
 <body>
     <div class="container">
@@ -943,14 +944,7 @@ speaker_2: 你好！"></textarea>
         }
 
         function showResult(id, success, message, audioUrl) {
-            var resultDiv = document.getElementById(id + '_result');
-            if (success) {
-                resultDiv.className = 'result success';
-                resultDiv.innerHTML = '<p>' + message + '</p><audio controls src="' + audioUrl + '"></audio>';
-            } else {
-                resultDiv.className = 'result error';
-                resultDiv.innerHTML = '<p>' + message + '</p>';
-            }
+            showResultCommon(id + '_result', success, message, audioUrl);
         }
 
         async function uploadAudioIfNeeded(inputId) {

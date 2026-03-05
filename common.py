@@ -48,7 +48,7 @@ def to_simplified(text: str) -> str:
 
 
 def copy_audio_to_config_dir(audio_path: str, config_name: str):
-    if audio_path is None:
+    if audio_path is None or audio_path == "":
         return None
 
     config_audio_dir = os.path.join(CONFIG_DIR, config_name, "audio")

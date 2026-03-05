@@ -41,6 +41,7 @@
                         <button onclick="loadInstructConfig()" class="secondary" style="padding: 8px 16px; cursor: pointer;">加载</button>
                         <button onclick="showSaveInstructConfigModal()" class="secondary" style="padding: 8px 16px; cursor: pointer;">保存当前</button>
                     </div>
+                    <div id="instruct_config_msg" style="font-size: 12px; color: #666; margin-top: 5px;"></div>
                     <div class="form-group">
                         <label>指令类型：</label>
                         <select id="instruct_type" onchange="updateInstructVisibility()">
@@ -142,6 +143,7 @@
                         <button onclick="loadZeroShotConfig()" class="secondary" style="padding: 8px 16px; cursor: pointer;">加载</button>
                         <button onclick="showSaveZeroShotConfigModal()" class="secondary" style="padding: 8px 16px; cursor: pointer;">保存当前</button>
                     </div>
+                    <div id="zs_config_msg" style="font-size: 12px; color: #666; margin-top: 5px;"></div>
                     <div class="form-group">
                         <label>目标文本：</label>
                         <textarea id="zs_text" rows="4" placeholder="请输入要合成语音的文本..."></textarea>
@@ -569,19 +571,19 @@ speaker_2: 你好！"></textarea>
                         var volumeMap = {0.7: '低', 1.0: '中', 1.3: '高'};
                         document.getElementById('instruct_volume').value = volumeMap[data.volume] || '中';
                     }
-                    alert('配置 "' + configName + '" 已加载');
+                    showConfigMessage('instruct_config_msg', '配置 "' + configName + '" 已加载', false);
                 } else {
-                    alert('加载失败: ' + result.message);
+                    showConfigMessage('instruct_config_msg', '加载失败: ' + result.message, true);
                 }
             } catch (e) {
-                alert('加载失败: ' + e.message);
+                showConfigMessage('instruct_config_msg', '加载失败: ' + e.message, true);
             }
         }
 
         async function loadZeroShotConfig() {
             var configName = document.getElementById('zs_config_select').value;
             if (!configName) {
-                alert('请选择要加载的配置');
+                showConfigMessage('zs_config_msg', '请选择要加载的配置', true);
                 return;
             }
             
@@ -591,7 +593,7 @@ speaker_2: 你好！"></textarea>
                 if (result.success) {
                     var data = result.data;
                     if (data.task_type !== 'Zero-shot TTS') {
-                        alert('该配置不是 Zero-shot TTS 类型的配置');
+                        showConfigMessage('zs_config_msg', '该配置不是 Zero-shot TTS 类型的配置', true);
                         return;
                     }
                     if (data.prompt_audio) {
@@ -605,18 +607,28 @@ speaker_2: 你好！"></textarea>
                         document.getElementById('zs_ip_search').value = data.ip;
                         document.getElementById('zs_instruct_ip').value = data.ip;
                     }
-                    alert('配置 "' + configName + '" 已加载');
+                    showConfigMessage('zs_config_msg', '配置 "' + configName + '" 已加载', false);
                 } else {
-                    alert('加载失败: ' + result.message);
+                    showConfigMessage('zs_config_msg', '加载失败: ' + result.message, true);
                 }
             } catch (e) {
-                alert('加载失败: ' + e.message);
+                showConfigMessage('zs_config_msg', '加载失败: ' + e.message, true);
             }
         }
 
+        function showConfigMessage(msgId, message, isError) {
+            var msgDiv = document.getElementById(msgId);
+            msgDiv.textContent = message;
+            msgDiv.style.color = isError ? '#d9534f' : '#5cb85c';
+            setTimeout(function() {
+                msgDiv.textContent = '';
+            }, 3000);
+        }
+
         function showSaveInstructConfigModal() {
-            var configName = prompt('请输入配置名称:');
+            var configName = document.getElementById('instruct_config_search').value;
             if (!configName || !configName.trim()) {
+                showConfigMessage('instruct_config_msg', '请在搜索框输入配置名称', true);
                 return;
             }
             saveInstructConfig(configName.trim());
@@ -630,6 +642,10 @@ speaker_2: 你好！"></textarea>
                 var fileInput = document.getElementById('instruct_prompt_audio');
                 if (fileInput && fileInput.files && fileInput.files[0]) {
                     promptAudio = await uploadAudioIfNeeded('instruct_prompt_audio');
+                }
+                if (!promptAudio) {
+                    var savedAudio = document.getElementById('instruct_config_audio_path').value;
+                    promptAudio = savedAudio || null;
                 }
             }
 
@@ -680,19 +696,20 @@ speaker_2: 你好！"></textarea>
                 });
                 var result = await resp.json();
                 if (result.success) {
-                    alert(result.message);
+                    showConfigMessage('instruct_config_msg', result.message, false);
                     loadConfigList();
                 } else {
-                    alert('保存失败: ' + result.message);
+                    showConfigMessage('instruct_config_msg', '保存失败: ' + result.message, true);
                 }
             } catch (e) {
-                alert('保存失败: ' + e.message);
+                showConfigMessage('instruct_config_msg', '保存失败: ' + e.message, true);
             }
         }
 
         function showSaveZeroShotConfigModal() {
-            var configName = prompt('请输入配置名称:');
+            var configName = document.getElementById('zs_config_search').value;
             if (!configName || !configName.trim()) {
+                showConfigMessage('zs_config_msg', '请在搜索框输入配置名称', true);
                 return;
             }
             saveZeroShotConfig(configName.trim());
@@ -703,6 +720,10 @@ speaker_2: 你好！"></textarea>
             var promptAudio = null;
             if (fileInput && fileInput.files && fileInput.files[0]) {
                 promptAudio = await uploadAudioIfNeeded('zs_prompt_audio');
+            }
+            if (!promptAudio) {
+                var savedAudio = document.getElementById('zs_config_audio_path').value;
+                promptAudio = savedAudio || null;
             }
 
             var ip = document.getElementById('zs_instruct_ip').value;
@@ -722,13 +743,13 @@ speaker_2: 你好！"></textarea>
                 });
                 var result = await resp.json();
                 if (result.success) {
-                    alert(result.message);
+                    showConfigMessage('zs_config_msg', result.message, false);
                     loadConfigList();
                 } else {
-                    alert('保存失败: ' + result.message);
+                    showConfigMessage('zs_config_msg', '保存失败: ' + result.message, true);
                 }
             } catch (e) {
-                alert('保存失败: ' + e.message);
+                showConfigMessage('zs_config_msg', '保存失败: ' + e.message, true);
             }
         }
 

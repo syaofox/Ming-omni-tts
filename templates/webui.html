@@ -153,9 +153,12 @@
                 <div class="col">
                     <div class="form-group">
                         <label>对话脚本：</label>
-                        <textarea id="pod_text" rows="6" placeholder="使用 'speaker_1:' 和 'speaker_2:' 来区分说话人。例如：
+                        <textarea id="pod_text" rows="6" placeholder="使用 'speaker_1:' 和 'speaker_2:' 等来区分说话人。例如：
 speaker_1: 你好！
 speaker_2: 你好！"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>参考音频（按speaker_1, speaker_2, ...顺序）：</label>
                     </div>
                     <div class="form-group">
                         <label>Speaker 1 参考音频：</label>
@@ -172,6 +175,14 @@ speaker_2: 你好！"></textarea>
                             <p>拖拽音频文件到此处 或 点击选择</p>
                         </div>
                         <div id="pod_prompt_audio_display2"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Speaker 3 参考音频（可选）：</label>
+                        <div class="drop-zone" id="pod_drop_zone3">
+                            <input type="file" id="pod_prompt_audio3" accept="audio/*">
+                            <p>拖拽音频文件到此处 或 点击选择</p>
+                        </div>
+                        <div id="pod_prompt_audio_display3"></div>
                     </div>
                     <button id="pod_generate" onclick="generatePodcast()" class="generate-btn">生成对话</button>
                     <div id="pod_result"></div>
@@ -534,6 +545,7 @@ speaker_2: 你好！"></textarea>
         initDropZone('zs_drop_zone', 'zs_prompt_audio', 'zs_prompt_audio_display');
         initDropZone('pod_drop_zone1', 'pod_prompt_audio1', 'pod_prompt_audio_display1');
         initDropZone('pod_drop_zone2', 'pod_prompt_audio2', 'pod_prompt_audio_display2');
+        initDropZone('pod_drop_zone3', 'pod_prompt_audio3', 'pod_prompt_audio_display3');
         initDropZone('swb_drop_zone', 'swb_prompt_audio', 'swb_prompt_audio_display');
         
         document.querySelectorAll('input[type="range"]').forEach(function(slider) {
@@ -739,17 +751,6 @@ speaker_2: 你好！"></textarea>
             var btn = document.getElementById('pod_generate');
             btn.disabled = true;
             
-            var resultDiv = document.getElementById('pod_result');
-            resultDiv.className = 'result';
-            resultDiv.innerHTML = '<p>功能开发中，敬请期待...</p>';
-
-            btn.disabled = false;
-        }
-
-        async function generatePodcast() {
-            var btn = document.getElementById('pod_generate');
-            btn.disabled = true;
-            
             var startTime = Date.now();
             var timer = null;
             var resultDiv = document.getElementById('pod_result');
@@ -770,24 +771,27 @@ speaker_2: 你好！"></textarea>
                 return;
             }
 
-            // 上传两个说话人的参考音频
-            var promptAudio1 = await uploadAudioIfNeeded('pod_prompt_audio1');
-            var promptAudio2 = await uploadAudioIfNeeded('pod_prompt_audio2');
+            // 上传多个说话人的参考音频
+            var promptAudios = [];
+            for (var i = 1; i <= 3; i++) {
+                var audio = await uploadAudioIfNeeded('pod_prompt_audio' + i);
+                if (audio) {
+                    promptAudios.push(audio);
+                }
+            }
 
-            if (!promptAudio1 || !promptAudio2) {
+            if (promptAudios.length < 2) {
                 clearInterval(timer);
-                showResult('pod', false, '请上传两个说话人的参考音频');
+                showResult('pod', false, '请至少上传两个说话人的参考音频');
                 btn.disabled = false;
                 return;
             }
 
-            // 构造 prompt_wav_path 为数组
-            var promptAudio = [promptAudio1, promptAudio2];
-
+            // Podcast 模式：分句生成后合并
             var data = {
                 task_type: 'Podcast',
                 text: text,
-                prompt_audio: promptAudio,
+                prompt_audio: promptAudios,
                 seed: parseInt(document.getElementById('settings_seed').value) || null,
             };
 

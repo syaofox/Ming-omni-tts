@@ -158,7 +158,7 @@ class MingAudio:
         seed=None,
     ):
         if prompt_wav_path is None:
-            prompt_waveform, prompt_text, spk_emb = None, None, None
+            prompt_waveform, spk_emb = None, None
             if use_zero_spk_emb:
                 spk_emb = [
                     torch.zeros(1, 192, device=self.device, dtype=torch.bfloat16)
@@ -223,7 +223,7 @@ class MingAudio:
         if seed is None:
             seed = self.seed
         if prompt_wav_path is None:
-            prompt_waveform, prompt_text, spk_emb = None, None, None
+            prompt_waveform, spk_emb = None, None
             if use_zero_spk_emb:
                 spk_emb = [
                     torch.zeros(1, 192, device=self.device, dtype=torch.bfloat16)

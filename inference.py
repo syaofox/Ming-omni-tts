@@ -72,6 +72,131 @@ def preprocess_text(text):
     return text_list
 
 
+def parse_podcast_dialogues(text):
+    """
+    解析对话文本，返回按原文顺序的句子列表
+    每个元素: (speaker_index, sentence_text)
+    speaker_index 从 1 开始 (speaker_1 -> 0, speaker_2 -> 1, ...)
+    """
+    import re
+
+    sentences = []
+    lines = text.replace("\r\n", "\n").replace("\r", "\n").strip().split("\n")
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        # 匹配 speaker_X: 格式
+        match = re.match(r"^speaker_(\d+):\s*(.+)$", line, re.IGNORECASE)
+        if match:
+            speaker_index = int(match.group(1)) - 1  # 转换为 0-based
+            sentence_text = match.group(2).strip()
+            if sentence_text:
+                sentences.append((speaker_index, sentence_text))
+
+    return sentences
+
+
+def generate_podcast(
+    model,
+    text,
+    prompt_audio_list,
+    max_decode_steps,
+    cfg,
+    sigma,
+    temperature,
+    output_path,
+    seed,
+):
+    """
+    分句生成 Podcast 并合并
+    """
+    import re
+    import torch
+    import torchaudio
+
+    # 解析对话
+    sentences = parse_podcast_dialogues(text)
+    if not sentences:
+        return None, "无法解析对话文本，请使用 speaker_1:, speaker_2: 等格式"
+
+    # 按说话人分组句子
+    speaker_sentences = {}
+    for speaker_idx, sentence in sentences:
+        if speaker_idx not in speaker_sentences:
+            speaker_sentences[speaker_idx] = []
+        speaker_sentences[speaker_idx].append(sentence)
+
+    # 检查参考音频数量
+    num_speakers = len(speaker_sentences)
+    if num_speakers > len(prompt_audio_list):
+        return (
+            None,
+            f"对话中有 {num_speakers} 个说话人，但只提供了 {len(prompt_audio_list)} 个参考音频",
+        )
+
+    # 预处理每个说话人的参考音频
+    prompt_waveforms = []
+    spk_embs = []
+
+    for i in range(num_speakers):
+        prompt_wav_path = prompt_audio_list[i]
+        waveform, sr = torchaudio.load(prompt_wav_path)
+        if waveform.shape[0] > 1:
+            waveform = waveform.mean(dim=0, keepdim=True)
+        if sr != model.sample_rate:
+            waveform = torchaudio.transforms.Resample(
+                orig_freq=sr, new_freq=model.sample_rate
+            )(waveform)
+        prompt_waveforms.append(waveform)
+
+        # 提取 speaker embedding
+        waveform_16k = torchaudio.transforms.Resample(
+            orig_freq=model.sample_rate, new_freq=16000
+        )(waveform)
+        spk_emb = model.spkemb_extractor(waveform_16k)
+        spk_embs.append(spk_emb)
+
+    # 生成每个说话人的句子
+    generated_waveforms = []
+    prompt = get_prompt_by_task_type("Podcast")
+
+    for speaker_idx, sentence in sentences:
+        spk_emb = spk_embs[speaker_idx]
+
+        waveform = model.speech_generation(
+            prompt=prompt,
+            text=sentence,
+            use_spk_emb=True,
+            use_zero_spk_emb=False,
+            instruction=None,
+            prompt_wav_path=prompt_audio_list[speaker_idx],
+            prompt_text=None,
+            max_decode_steps=max_decode_steps,
+            cfg=cfg,
+            sigma=sigma,
+            temperature=temperature,
+            output_wav_path=None,
+            seed=seed,
+        )
+        generated_waveforms.append(waveform)
+
+    # 合并所有音频
+    final_waveform = torch.cat(generated_waveforms, dim=-1)
+
+    # 保存
+    if output_path:
+        import os
+
+        output_dir = os.path.dirname(output_path)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+        torchaudio.save(output_path, final_waveform, sample_rate=model.sample_rate)
+
+    return output_path, f"生成成功! (共 {len(sentences)} 句, {num_speakers} 人)"
+
+
 def generate_speech(
     model,
     text,
@@ -157,12 +282,32 @@ def generate_speech(
 
     prompt = get_prompt_by_task_type(task_type)
 
-    # 对于 Podcast，使用原始 prompt_text（可以为 None）
-    use_prompt_text = (
-        prompt_text
-        if (task_type == "Podcast" or (prompt_audio and prompt_text))
-        else None
-    )
+    # Podcast 使用单独的分句生成逻辑
+    if task_type == "Podcast":
+        try:
+            return generate_podcast(
+                model=model,
+                text=text,
+                prompt_audio_list=prompt_audio,
+                max_decode_steps=max_decode_steps,
+                cfg=cfg,
+                sigma=sigma,
+                temperature=temperature,
+                output_path=output_path,
+                seed=seed,
+            )
+        except Exception as e:
+            from loguru import logger
+
+            logger.error(f"Podcast generation failed: {e}")
+            return None, f"生成失败: {str(e)}"
+
+    # 对于 Podcast，prompt_text 和 text 相同，但模型内部会重复
+    # 所以这里不传 prompt_text，让模型只使用 text
+    if task_type == "Podcast":
+        use_prompt_text = None
+    else:
+        use_prompt_text = prompt_text if (prompt_audio and prompt_text) else None
 
     try:
         if len(text_list) == 1:

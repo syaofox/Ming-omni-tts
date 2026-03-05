@@ -32,10 +32,12 @@
             <div class="row">
                 <div class="col">
                     <div class="form-group" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                        <label>配置：</label>
-                        <select id="instruct_config_select" style="flex: 1; min-width: 150px;">
-                            <option value="">-- 选择已保存的配置 --</option>
-                        </select>
+                        <label style="min-width: 50px;">配置：</label>
+                        <div class="search-select-container" style="position: relative; flex: 1; min-width: 200px;">
+                            <input type="text" id="instruct_config_search" placeholder="搜索已保存的配置..." autocomplete="off" style="margin-bottom: 5px;">
+                            <div id="instruct_config_dropdown" class="search-dropdown" style="display: none;"></div>
+                        </div>
+                        <input type="hidden" id="instruct_config_select">
                         <button onclick="loadInstructConfig()" class="secondary" style="padding: 8px 16px; cursor: pointer;">加载</button>
                         <button onclick="showSaveInstructConfigModal()" class="secondary" style="padding: 8px 16px; cursor: pointer;">保存当前</button>
                     </div>
@@ -131,10 +133,12 @@
             <div class="row">
                 <div class="col">
                     <div class="form-group" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                        <label>配置：</label>
-                        <select id="zs_config_select" style="flex: 1; min-width: 150px;">
-                            <option value="">-- 选择已保存的配置 --</option>
-                        </select>
+                        <label style="min-width: 50px;">配置：</label>
+                        <div class="search-select-container" style="position: relative; flex: 1; min-width: 200px;">
+                            <input type="text" id="zs_config_search" placeholder="搜索已保存的配置..." autocomplete="off" style="margin-bottom: 5px;">
+                            <div id="zs_config_dropdown" class="search-dropdown" style="display: none;"></div>
+                        </div>
+                        <input type="hidden" id="zs_config_select">
                         <button onclick="loadZeroShotConfig()" class="secondary" style="padding: 8px 16px; cursor: pointer;">加载</button>
                         <button onclick="showSaveZeroShotConfigModal()" class="secondary" style="padding: 8px 16px; cursor: pointer;">保存当前</button>
                     </div>
@@ -440,30 +444,81 @@ speaker_2: 你好！"></textarea>
                 return c.task_type === 'Zero-shot TTS';
             });
             
-            if (instructSelect) {
-                instructSelect.innerHTML = '<option value="">-- 选择已保存的配置 --</option>';
-                instructConfigs.forEach(function(c) {
-                    var opt = document.createElement('option');
-                    opt.value = c.name;
-                    opt.textContent = c.name + ' (' + (c.pinyin || '') + ')';
-                    instructSelect.appendChild(opt);
-                });
-            }
-            
-            if (zsSelect) {
-                zsSelect.innerHTML = '<option value="">-- 选择已保存的配置 --</option>';
-                zeroShotConfigs.forEach(function(c) {
-                    var opt = document.createElement('option');
-                    opt.value = c.name;
-                    opt.textContent = c.name + ' (' + (c.pinyin || '') + ')';
-                    zsSelect.appendChild(opt);
-                });
-            }
+            window.instructConfigs = instructConfigs;
+            window.zeroShotConfigs = zeroShotConfigs;
         }
 
+        function showConfigDropdown(inputId, dropdownId, hiddenId, configs) {
+            var dropdown = document.getElementById(dropdownId);
+            var input = document.getElementById(inputId);
+            dropdown.innerHTML = '';
+            dropdown.style.display = 'block';
+            
+            var filter = input.value || '';
+            var filterLower = filter.toLowerCase().trim();
+            var filterNoSpace = filterLower.replace(/\s+/g, '');
+            
+            var matched = configs.filter(function(c) {
+                var nameLower = c.name.toLowerCase();
+                var pinyinLower = (c.pinyin || '').toLowerCase();
+                var initialsLower = (c.initials || '').toLowerCase();
+                
+                return nameLower.includes(filterLower) ||
+                       pinyinLower.includes(filterLower) ||
+                       initialsLower.includes(filterNoSpace);
+            });
+            
+            if (matched.length === 0) {
+                var noResult = document.createElement('div');
+                noResult.className = 'no-result';
+                noResult.textContent = '无匹配结果';
+                dropdown.appendChild(noResult);
+                return;
+            }
+            
+            matched.forEach(function(c) {
+                var div = document.createElement('div');
+                div.textContent = c.name + ' (' + (c.pinyin || '') + ')';
+                div.onclick = function(e) {
+                    e.stopPropagation();
+                    input.value = c.name;
+                    dropdown.style.display = 'none';
+                    document.getElementById(hiddenId).value = c.name;
+                };
+                dropdown.appendChild(div);
+            });
+        }
+
+        function hideConfigDropdown() {
+            document.getElementById('instruct_config_dropdown').style.display = 'none';
+            document.getElementById('zs_config_dropdown').style.display = 'none';
+        }
+
+        document.getElementById('instruct_config_search').addEventListener('input', function() {
+            showConfigDropdown('instruct_config_search', 'instruct_config_dropdown', 'instruct_config_select', window.instructConfigs || []);
+        });
+
+        document.getElementById('instruct_config_search').addEventListener('focus', function() {
+            showConfigDropdown('instruct_config_search', 'instruct_config_dropdown', 'instruct_config_select', window.instructConfigs || []);
+        });
+
+        document.getElementById('zs_config_search').addEventListener('input', function() {
+            showConfigDropdown('zs_config_search', 'zs_config_dropdown', 'zs_config_select', window.zeroShotConfigs || []);
+        });
+
+        document.getElementById('zs_config_search').addEventListener('focus', function() {
+            showConfigDropdown('zs_config_search', 'zs_config_dropdown', 'zs_config_select', window.zeroShotConfigs || []);
+        });
+
+        document.addEventListener('click', function(e) {
+            var container = e.target.closest('.search-select-container');
+            if (!container) {
+                hideConfigDropdown();
+            }
+        });
+
         async function loadInstructConfig() {
-            var select = document.getElementById('instruct_config_select');
-            var configName = select.value;
+            var configName = document.getElementById('instruct_config_select').value;
             if (!configName) {
                 alert('请选择要加载的配置');
                 return;
@@ -524,8 +579,7 @@ speaker_2: 你好！"></textarea>
         }
 
         async function loadZeroShotConfig() {
-            var select = document.getElementById('zs_config_select');
-            var configName = select.value;
+            var configName = document.getElementById('zs_config_select').value;
             if (!configName) {
                 alert('请选择要加载的配置');
                 return;

@@ -8,7 +8,15 @@
 </head>
 <body>
     <div class="container">
-        <h1>Ming-Omni-TTS 语音合成</h1>
+        <div class="header">
+            <h1>Ming-Omni-TTS 语音合成</h1>
+            <button class="settings-btn" onclick="openSettings()" title="设置">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+            </button>
+        </div>
         
         <div class="tabs">
             <button class="tab active" onclick="switchTab('instruct_tts')">Instruct TTS</button>
@@ -636,6 +644,7 @@ speaker_2: 你好！"></textarea>
                 speech_speed: speechSpeed,
                 pitch: pitch,
                 volume: volume,
+                seed: parseInt(document.getElementById('settings_seed').value) || null,
             };
 
             try {
@@ -700,6 +709,7 @@ speaker_2: 你好！"></textarea>
                 text: text,
                 prompt_audio: promptAudio,
                 ip: ip || null,
+                seed: parseInt(document.getElementById('settings_seed').value) || null,
             };
 
             try {
@@ -781,6 +791,7 @@ speaker_2: 你好！"></textarea>
                 cfg: 2.0,
                 sigma: 0.25,
                 temperature: 0.0,
+                seed: parseInt(document.getElementById('settings_seed').value) || null,
             };
 
             try {
@@ -830,6 +841,7 @@ speaker_2: 你好！"></textarea>
                 cfg: parseFloat(document.getElementById('tta_cfg').value),
                 sigma: parseFloat(document.getElementById('tta_sigma').value),
                 temperature: parseFloat(document.getElementById('tta_temperature').value),
+                seed: parseInt(document.getElementById('settings_seed').value) || null,
             };
 
             try {
@@ -853,6 +865,131 @@ speaker_2: 你好！"></textarea>
         }
 
         loadIPData();
+        loadSeed();
+    </script>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeSettings()">&times;</span>
+            <h2>设置</h2>
+            <div class="form-group">
+                <label>随机种子 (Seed)：</label>
+                <input type="number" id="settings_seed" placeholder="留空使用随机值" style="width: 100%; padding: 8px; margin: 10px 0;">
+                <p style="font-size: 12px; color: #666;">设置固定种子可复现生成结果，留空则每次使用随机种子</p>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button onclick="saveSeed()" class="generate-btn">保存</button>
+                <button onclick="randomizeSeed()" class="secondary" style="padding: 10px 20px; cursor: pointer;">随机生成</button>
+            </div>
+            <p id="settings_msg" style="margin-top: 10px; color: #666;"></p>
+        </div>
+    </div>
+
+    <style>
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .settings-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            color: #666;
+            border-radius: 4px;
+        }
+        .settings-btn:hover {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: 10% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            position: relative;
+        }
+        .close {
+            position: absolute;
+            right: 15px;
+            top: 10px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        .close:hover {
+            color: #333;
+        }
+    </style>
+
+    <script>
+        function openSettings() {
+            document.getElementById('settingsModal').style.display = 'block';
+            loadSeed();
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        async function loadSeed() {
+            try {
+                var resp = await fetch('/seed');
+                var result = await resp.json();
+                if (result.success) {
+                    document.getElementById('settings_seed').value = result.seed;
+                }
+            } catch (e) {
+                console.error('Failed to load seed:', e);
+            }
+        }
+
+        async function saveSeed() {
+            var seedInput = document.getElementById('settings_seed').value;
+            var seedValue = seedInput ? parseInt(seedInput) : null;
+            
+            try {
+                var resp = await fetch('/seed', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ seed: seedValue })
+                });
+                var result = await resp.json();
+                if (result.success) {
+                    document.getElementById('settings_msg').textContent = 'Seed已保存: ' + result.seed;
+                    document.getElementById('settings_seed').value = result.seed;
+                } else {
+                    document.getElementById('settings_msg').textContent = 'Error: ' + result.message;
+                }
+            } catch (e) {
+                document.getElementById('settings_msg').textContent = 'Error: ' + e.message;
+            }
+        }
+
+        async function randomizeSeed() {
+            document.getElementById('settings_seed').value = '';
+            await saveSeed();
+        }
+
+        window.onclick = function(event) {
+            var modal = document.getElementById('settingsModal');
+            if (event.target == modal) {
+                closeSettings();
+            }
+        }
     </script>
 </body>
 </html>

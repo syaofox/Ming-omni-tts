@@ -37,7 +37,7 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
 
         # Dense Model: Utilizes the Qwen2.5-0.5B model.
         # MoE Model: Utilizes the Bailing-MoE-Lite-16.8B model.
-        if self.model_type == 'dense':
+        if self.model_type == "dense":
             config = Qwen2Config.from_dict(self.config.llm_config)
             self.model = Qwen2ForCausalLM(config)
         else:
@@ -46,19 +46,21 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
         # Audio tokenizer
         self.audio = AudioVAE(self.config.audio_tokenizer_config)
 
-        self.latent_dim = self.config.audio_tokenizer_config.enc_kwargs['latent_dim']
+        self.latent_dim = self.config.audio_tokenizer_config.enc_kwargs["latent_dim"]
         self.linear_proj_audio = Aggregator(
             in_channels=self.latent_dim,
             llm_input_dim=self.model.config.hidden_size,
             **self.config.aggregator_config,
         )
 
-        self.patch_size = self.config.ditar_config['patch_size']
-        self.history_patch_size = self.config.ditar_config.get('history_patch_size', self.patch_size)
+        self.patch_size = self.config.ditar_config["patch_size"]
+        self.history_patch_size = self.config.ditar_config.get(
+            "history_patch_size", self.patch_size
+        )
         self.flowloss = FlowLoss(
             z_channels=self.latent_dim,
             llm_cond_dim=self.model.config.hidden_size,
-            **self.config.ditar_config
+            **self.config.ditar_config,
         )
         self.stop_head = nn.Linear(self.model.config.hidden_size, 2, bias=True)
         self.spk_head = nn.Linear(192, self.model.config.hidden_size, bias=True)
@@ -77,7 +79,7 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
         spatial_merge_size=2,
         tokens_per_second=2,
         second_per_grid_ts=None,
-        inputs_embeds=None
+        inputs_embeds=None,
     ):
         use_abs_time_pos = second_per_grid_ts is not None
 
@@ -155,7 +157,11 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
                     )
                     text_len = ed - st
 
-                    st_idx = llm_pos_ids_list[-1].max() + 1 if len(llm_pos_ids_list) > 0 else 0
+                    st_idx = (
+                        llm_pos_ids_list[-1].max() + 1
+                        if len(llm_pos_ids_list) > 0
+                        else 0
+                    )
                     llm_pos_ids_list.append(
                         torch.arange(text_len).view(1, -1).expand(3, -1) + st_idx
                     )
@@ -163,7 +169,9 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
                     range_tensor = torch.arange(llm_grid_t).view(-1, 1)
                     expanded_range = range_tensor.expand(-1, llm_grid_h * llm_grid_w)
                     if use_abs_time_pos:
-                        time_tensor = expanded_range * second_per_grid_t * tokens_per_second
+                        time_tensor = (
+                            expanded_range * second_per_grid_t * tokens_per_second
+                        )
                         time_tensor_long = time_tensor.long()
                     else:
                         time_tensor_long = expanded_range.long()
@@ -187,29 +195,51 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
                     st = ed + llm_grid_t * llm_grid_h * llm_grid_w
 
                 if st < len(input_tokens):
-                    st_idx = llm_pos_ids_list[-1].max() + 1 if len(llm_pos_ids_list) > 0 else 0
+                    st_idx = (
+                        llm_pos_ids_list[-1].max() + 1
+                        if len(llm_pos_ids_list) > 0
+                        else 0
+                    )
                     text_len = len(input_tokens) - st
                     llm_pos_ids_list.append(
                         torch.arange(text_len).view(1, -1).expand(3, -1) + st_idx
                     )
 
                 llm_positions = torch.cat(llm_pos_ids_list, dim=1).reshape(3, -1)
-                position_ids[..., i, attention_mask[i] == 1] = llm_positions.to(position_ids.device)
-                mrope_position_deltas.append(llm_positions.max() + 1 - len(total_input_ids[i]))
+                position_ids[..., i, attention_mask[i] == 1] = llm_positions.to(
+                    position_ids.device
+                )
+                mrope_position_deltas.append(
+                    llm_positions.max() + 1 - len(total_input_ids[i])
+                )
             mrope_position_deltas = torch.tensor(
                 mrope_position_deltas, device=input_ids.device
             ).unsqueeze(1)
         else:
-            device = inputs_embeds.device if inputs_embeds is not None else input_ids.device
-            length = inputs_embeds.size(1) if inputs_embeds is not None else input_ids.size(1)
-            bsz = inputs_embeds.size(0) if inputs_embeds is not None else input_ids.size(0)
-            dtype = inputs_embeds.dtype if inputs_embeds is not None else input_ids.dtype
+            device = (
+                inputs_embeds.device if inputs_embeds is not None else input_ids.device
+            )
+            length = (
+                inputs_embeds.size(1)
+                if inputs_embeds is not None
+                else input_ids.size(1)
+            )
+            bsz = (
+                inputs_embeds.size(0)
+                if inputs_embeds is not None
+                else input_ids.size(0)
+            )
+            dtype = (
+                inputs_embeds.dtype if inputs_embeds is not None else input_ids.dtype
+            )
 
             if attention_mask is not None:
                 position_ids = attention_mask.long().cumsum(-1) - 1
                 position_ids.masked_fill_(attention_mask == 0, 1)
                 position_ids = position_ids.unsqueeze(0).expand(3, -1, -1).to(device)
-                max_position_ids = position_ids.max(0, keepdim=False)[0].max(-1, keepdim=True)[0]
+                max_position_ids = position_ids.max(0, keepdim=False)[0].max(
+                    -1, keepdim=True
+                )[0]
                 mrope_position_deltas = max_position_ids + 1 - attention_mask.shape[-1]
             else:
                 position_ids = (
@@ -229,7 +259,16 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
         # An empty function to be compatible with the PEFT library for LoRA training. This function is not used in practice.
         pass
 
-    def prepare_input_embed(self, prompt, text, spk_emb=None, instruction=None, prompt_latent=None, prompt_text=None, use_zero_spk_emb=False):
+    def prepare_input_embed(
+        self,
+        prompt,
+        text,
+        spk_emb=None,
+        instruction=None,
+        prompt_latent=None,
+        prompt_text=None,
+        use_zero_spk_emb=False,
+    ):
         """
         Prepares the input embeddings for the model by constructing a complex sequence of text tokens and injecting continuous features like speaker embeddings and audio latents.
         """
@@ -241,27 +280,26 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
                 if use_zero_spk_emb:
                     se = torch.zeros_like(se)
                 spk_emb[i] = se
-                if self.model_type == 'dense':
+                if self.model_type == "dense":
                     spk_emb_prompt.extend(
-                        self.tokenizer.encode(f"  speaker_{i+1}:") +
-                        self.tokenizer.encode("<|vision_start|>") +
-                        self.tokenizer.encode("<|vision_pad|>") +
-                        self.tokenizer.encode("<|vision_end|>\n")
+                        self.tokenizer.encode(f"  speaker_{i + 1}:")
+                        + self.tokenizer.encode("<|vision_start|>")
+                        + self.tokenizer.encode("<|vision_pad|>")
+                        + self.tokenizer.encode("<|vision_end|>\n")
                     )
                 else:
                     spk_emb_prompt.extend(
-                        self.tokenizer.encode(f"  speaker_{i+1}:") +
-                        self.tokenizer.encode("<spk>") +
-                        self.tokenizer.encode("<audioPatch>") +
-                        self.tokenizer.encode("</spk>\n")
+                        self.tokenizer.encode(f"  speaker_{i + 1}:")
+                        + self.tokenizer.encode("<spk>")
+                        + self.tokenizer.encode("<audioPatch>")
+                        + self.tokenizer.encode("</spk>\n")
                     )
         # Process Instruction Control (if provided)
         instruction_prompt = []
         if instruction is not None:
-            instruction_prompt = (
-                self.tokenizer.encode(instruction) +
-                self.tokenizer.encode('<|endoftext|>')
-            )
+            instruction_prompt = self.tokenizer.encode(
+                instruction
+            ) + self.tokenizer.encode("<|endoftext|>")
 
         # Process Zero-Shot Specch Prompt (if provided)
         prompt_text_token = []
@@ -273,50 +311,62 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
             prompt_latent = prompt_latent.reshape(bsz, -1, prompt_latent.size(-1))
 
             prompt_text_token = self.tokenizer.encode(prompt_text)
-            prompt_latent_token = [self.tokenizer.convert_tokens_to_ids('<audioPatch>')] * prompt_latent.size(1)
+            prompt_latent_token = [
+                self.tokenizer.convert_tokens_to_ids("<audioPatch>")
+            ] * prompt_latent.size(1)
 
         # Special handling for BGM prompts: remove the 'Text input:' prefix as it's not needed.
-        prompt2 = self.tokenizer.encode(' Text input:\n')
-        if 'Genre: ' in text and 'Mood: ' in text and 'Instrument: ' in text and 'Theme: ' in text and 'Duration: ' in text:
+        prompt2 = self.tokenizer.encode(" Text input:\n")
+        if (
+            "Genre: " in text
+            and "Mood: " in text
+            and "Instrument: " in text
+            and "Theme: " in text
+            and "Duration: " in text
+        ):
             prompt2 = []
 
         # Assemble all the processed parts into the final input token sequence based on the model type.
-        if self.model_type == 'dense':
+        if self.model_type == "dense":
             input_part = (
-                self.tokenizer.encode("<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n") +
-                self.tokenizer.encode("<|im_start|>user\n") +
-                self.tokenizer.encode(prompt) +
-                spk_emb_prompt +
-                prompt2 +
-                prompt_text_token +
-                self.tokenizer.encode(text) +
-                self.tokenizer.encode("<|im_end|>\n") +
-                self.tokenizer.encode("<|im_start|>assistant\n") +
-                instruction_prompt +
-                self.tokenizer.encode("<audio>") +
-                prompt_latent_token
+                self.tokenizer.encode(
+                    "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
+                )
+                + self.tokenizer.encode("<|im_start|>user\n")
+                + self.tokenizer.encode(prompt)
+                + spk_emb_prompt
+                + prompt2
+                + prompt_text_token
+                + self.tokenizer.encode(text)
+                + self.tokenizer.encode("<|im_end|>\n")
+                + self.tokenizer.encode("<|im_start|>assistant\n")
+                + instruction_prompt
+                + self.tokenizer.encode("<audio>")
+                + prompt_latent_token
             )
         else:
             # MoE model
             input_part = (
-                self.tokenizer.encode("<role>HUMAN</role>") +
-                self.tokenizer.encode(prompt) +
-                spk_emb_prompt +
-                prompt2 +
-                prompt_text_token +
-                self.tokenizer.encode(text) +
-                self.tokenizer.encode("<role>ASSISTANT</role>") +
-                instruction_prompt +
-                self.tokenizer.encode("<audio>") +
-                prompt_latent_token
+                self.tokenizer.encode("<role>HUMAN</role>")
+                + self.tokenizer.encode(prompt)
+                + spk_emb_prompt
+                + prompt2
+                + prompt_text_token
+                + self.tokenizer.encode(text)
+                + self.tokenizer.encode("<role>ASSISTANT</role>")
+                + instruction_prompt
+                + self.tokenizer.encode("<audio>")
+                + prompt_latent_token
             )
 
-        input_ids = torch.tensor(input_part, dtype=torch.long).unsqueeze(0).to(self.device)
+        input_ids = (
+            torch.tensor(input_part, dtype=torch.long).unsqueeze(0).to(self.device)
+        )
         inputs_embeds = self.model.get_input_embeddings()(input_ids).to(self.device)
-        
+
         # Inject speaker embeddings.
         if spk_emb is not None:
-            if self.model_type == 'dense':
+            if self.model_type == "dense":
                 spk_token_id = self.tokenizer.convert_tokens_to_ids("<|vision_start|>")
             else:
                 spk_token_id = self.tokenizer.convert_tokens_to_ids("<spk>")
@@ -324,14 +374,18 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
             assert len(spk_indices) > 0
             for i, se in enumerate(spk_emb):
                 inputs_embeds[0, spk_indices[i] + 1] = se
-        
+
         # NOTE: This implementation currently assumes a batch size of 1.
         if prompt_latent is not None:
             audio_token_id = self.tokenizer.convert_tokens_to_ids("<audio>")
             audio_indices = torch.where(input_ids[0] == audio_token_id)[0]
             assert len(audio_indices) > 0
             # 只考虑batchsize=1
-            inputs_embeds[0, audio_indices[0] + 1:audio_indices[0] + 1 + prompt_latent.size(1), :] = prompt_latent[0]
+            inputs_embeds[
+                0,
+                audio_indices[0] + 1 : audio_indices[0] + 1 + prompt_latent.size(1),
+                :,
+            ] = prompt_latent[0]
 
         return input_ids, inputs_embeds
 
@@ -341,15 +395,21 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
         text,
         max_decode_steps=200,
     ):
-        assert self.model_type == 'dense', "This functionality currently is not supported for MoE model"
+        assert self.model_type == "dense", (
+            "This functionality currently is not supported for MoE model"
+        )
         input_ids, inputs_embeds = self.prepare_input_embed(
             prompt=prompt,
             text=text,
         )
-        input_ids, inputs_embeds = input_ids[:,:-1], inputs_embeds[:,:-1,...]
-        logger.info(self.tokenizer.decode(input_ids[0].cpu().numpy().tolist()).__repr__())
+        input_ids, inputs_embeds = input_ids[:, :-1], inputs_embeds[:, :-1, ...]
+        logger.info(
+            self.tokenizer.decode(input_ids[0].cpu().numpy().tolist()).__repr__()
+        )
         attention_mask = torch.ones(input_ids.shape).to(input_ids.device)
-        position_ids = (attention_mask.cumsum(-1) - 1).masked_fill_((attention_mask == 0), 1)
+        position_ids = (attention_mask.cumsum(-1) - 1).masked_fill_(
+            (attention_mask == 0), 1
+        )
         self.rope_deltas = None
         past_key_values = None
 
@@ -357,13 +417,19 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
             inputs_embeds=inputs_embeds,
             attention_mask=attention_mask,
             max_new_tokens=200,
-            eos_token_id=self.tokenizer.encode("<text_eos>")
+            eos_token_id=self.tokenizer.encode("<text_eos>"),
         )
 
         stop_id = self.tokenizer.encode("<text_eos>")
-        stop_index = [i for i, token in enumerate(generated_ids[0].tolist()) if token == stop_id[0]]
-        generated_ids = generated_ids[:, 1:stop_index[0]]
-        response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        stop_index = [
+            i
+            for i, token in enumerate(generated_ids[0].tolist())
+            if token == stop_id[0]
+        ]
+        generated_ids = generated_ids[:, 1 : stop_index[0]]
+        response = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[
+            0
+        ]
         yield response, True
 
     def sample(
@@ -378,12 +444,17 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
         cfg=2.0,
         sigma=0.25,
         temperature=0,
-        use_zero_spk_emb=False
+        use_zero_spk_emb=False,
+        seed=None,
     ):
         # Prepare inputs
         if prompt_waveform is not None and prompt_text is not None:
-            prompt_waveform_length = torch.tensor([prompt_waveform.size(1)], dtype=torch.long, device=self.device)
-            prompt_latent, prompt_latent_length = self.audio.encode_latent(prompt_waveform.to(self.device), prompt_waveform_length)
+            prompt_waveform_length = torch.tensor(
+                [prompt_waveform.size(1)], dtype=torch.long, device=self.device
+            )
+            prompt_latent, prompt_latent_length = self.audio.encode_latent(
+                prompt_waveform.to(self.device), prompt_waveform_length
+            )
         else:
             prompt_latent, prompt_latent_length = None, None
 
@@ -394,14 +465,18 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
             instruction=instruction,
             prompt_latent=prompt_latent,
             prompt_text=prompt_text,
-            use_zero_spk_emb=use_zero_spk_emb
+            use_zero_spk_emb=use_zero_spk_emb,
         )
-        logger.info(self.tokenizer.decode(input_ids[0].cpu().numpy().tolist()).__repr__())
+        logger.info(
+            self.tokenizer.decode(input_ids[0].cpu().numpy().tolist()).__repr__()
+        )
         attention_mask = torch.ones(input_ids.shape).to(input_ids.device)
 
         # Obtain position_ids
-        if self.model_type == 'dense':
-            position_ids = (attention_mask.cumsum(-1) - 1).masked_fill_((attention_mask == 0), 1)
+        if self.model_type == "dense":
+            position_ids = (attention_mask.cumsum(-1) - 1).masked_fill_(
+                (attention_mask == 0), 1
+            )
         else:
             position_ids, rope_deltas = self.get_rope_index(
                 input_ids,
@@ -419,7 +494,7 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
         result = []
         # Each inference step combines Autoregressive (AR) decoding with Flow Matching
         for step in tqdm(range(max_decode_steps)):
-            with torch.autocast(device_type='cuda', dtype=torch.bfloat16):
+            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
                 outputs = self.model(
                     attention_mask=attention_mask,
                     position_ids=position_ids,
@@ -429,23 +504,33 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
                     output_hidden_states=True,
                     return_dict=True,
                     use_cache=True,
-                    past_key_values=past_key_values
+                    past_key_values=past_key_values,
                 )
             past_key_values = outputs.past_key_values
             z_diff = outputs.hidden_states[-1][:, -1:, :]
 
             # Initialize the latent_history for the first step
             if step == 0:
-                latent_history = torch.zeros(1, self.history_patch_size, self.latent_dim).to(z_diff.device)
+                latent_history = torch.zeros(
+                    1, self.history_patch_size, self.latent_dim
+                ).to(z_diff.device)
                 if prompt_latent is not None:
                     start_index = self.history_patch_size - prompt_latent.size(1)
                     if start_index < 0:
-                        latent_history[:] = prompt_latent[:, -start_index:,:]
+                        latent_history[:] = prompt_latent[:, -start_index:, :]
                     else:
-                        latent_history[:, start_index:,:] = prompt_latent
-                    
+                        latent_history[:, start_index:, :] = prompt_latent
+
             # Predict the latent for the current timestep using the Flow Matching head, conditioned on the history and other inputs.
-            sampled_token_latent, trajectory = self.flowloss.sample(z_diff, latent_history, cfg, self.patch_size, sigma=sigma, temperature=temperature)
+            sampled_token_latent, trajectory = self.flowloss.sample(
+                z_diff,
+                latent_history,
+                cfg,
+                self.patch_size,
+                sigma=sigma,
+                temperature=temperature,
+                seed=seed,
+            )
             result.append(sampled_token_latent)
 
             # Check if the generation is complete.
@@ -458,14 +543,16 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
             inputs_embeds = self.linear_proj_audio(sampled_token_latent)
 
             # Update position_ids, attention_mask, latent_history for next step
-            if self.model_type == 'dense':
+            if self.model_type == "dense":
                 position_ids = position_ids[:, -1:] + 1
             else:
                 batch_size, seq_length, _ = inputs_embeds.shape
                 if past_key_values and self.rope_deltas:
                     delta = past_key_values[0][1].shape[2] + self.rope_deltas
                 elif past_key_values:
-                    delta = torch.tensor(past_key_values[0][1].shape[2]).to(inputs_embeds.device)
+                    delta = torch.tensor(past_key_values[0][1].shape[2]).to(
+                        inputs_embeds.device
+                    )
                 else:
                     delta = torch.tensor(0).to(inputs_embeds.device)
                 position_ids = torch.arange(seq_length, device=inputs_embeds.device)
@@ -473,9 +560,13 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
                 position_ids = position_ids.add(delta)
                 position_ids = position_ids.unsqueeze(0).expand(3, -1, -1)
 
-            attention_mask = torch.ones(inputs_embeds.shape[0], 1).to(inputs_embeds.device)
-            latent_history[:, :-self.patch_size, :] = latent_history[:, self.patch_size:, :].clone()
-            latent_history[:, -self.patch_size:, :] = sampled_token_latent[:]
+            attention_mask = torch.ones(inputs_embeds.shape[0], 1).to(
+                inputs_embeds.device
+            )
+            latent_history[:, : -self.patch_size, :] = latent_history[
+                :, self.patch_size :, :
+            ].clone()
+            latent_history[:, -self.patch_size :, :] = sampled_token_latent[:]
 
     @torch.inference_mode()
     def generate(
@@ -490,28 +581,36 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
         cfg=2.0,
         sigma=0.25,
         temperature=0,
-        use_zero_spk_emb=False
+        use_zero_spk_emb=False,
+        seed=None,
     ):
         stream_state = (None, None, None)
         past_key_values = None
         use_cache = True
         speech = []
         sampled_tokens_list = []
-        with torch.autocast(device_type='cuda', dtype=torch.bfloat16):
+        with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
             for sampled_tokens, last_chunk in self.sample(
-                    prompt=prompt,
-                    text=text,
-                    spk_emb=spk_emb,
-                    instruction=instruction,
-                    prompt_waveform=prompt_waveform,
-                    prompt_text=prompt_text,
-                    max_decode_steps=max_decode_steps,
-                    cfg=cfg,
-                    sigma=sigma,
-                    temperature=temperature,
-                    use_zero_spk_emb=use_zero_spk_emb
+                prompt=prompt,
+                text=text,
+                spk_emb=spk_emb,
+                instruction=instruction,
+                prompt_waveform=prompt_waveform,
+                prompt_text=prompt_text,
+                max_decode_steps=max_decode_steps,
+                cfg=cfg,
+                sigma=sigma,
+                temperature=temperature,
+                use_zero_spk_emb=use_zero_spk_emb,
+                seed=seed,
             ):
-                speech_tmp, stream_state, past_key_values = self.audio.decode(sampled_tokens, past_key_values=past_key_values, use_cache=use_cache, stream_state=stream_state, last_chunk=last_chunk)
+                speech_tmp, stream_state, past_key_values = self.audio.decode(
+                    sampled_tokens,
+                    past_key_values=past_key_values,
+                    use_cache=use_cache,
+                    stream_state=stream_state,
+                    last_chunk=last_chunk,
+                )
                 speech.append(speech_tmp)
                 # For non-streaming decode
                 # sampled_tokens_list.append(sampled_tokens)
@@ -524,7 +623,7 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
         #     speech = self.audio.decode(sampled_tokens, past_key_values=None, use_cache=False)[0]
 
         return speech.cpu().float()[0]
-    
+
     @torch.inference_mode()
     def generate_text(
         self,
@@ -533,11 +632,11 @@ class BailingMMNativeForConditionalGeneration(PreTrainedModel):
         max_decode_steps=200,
     ):
         sampled_texts_list = []
-        with torch.autocast(device_type='cuda', dtype=torch.bfloat16):
+        with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
             for sampled_tokens, last_chunk in self.sample_text(
-                    prompt=prompt,
-                    text=text,
-                    max_decode_steps=max_decode_steps,
+                prompt=prompt,
+                text=text,
+                max_decode_steps=max_decode_steps,
             ):
                 sampled_texts_list.append(sampled_tokens)
 

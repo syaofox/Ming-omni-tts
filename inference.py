@@ -91,6 +91,7 @@ def generate_speech(
     voice_description=None,
     ip=None,
     output_path=None,
+    seed=None,
 ):
     if not prompt_text:
         prompt_text = None
@@ -154,6 +155,7 @@ def generate_speech(
                 sigma=sigma,
                 temperature=temperature,
                 output_wav_path=output_path,
+                seed=seed,
             )
         else:
             waveform = model.speech_generation_batch(
@@ -169,6 +171,7 @@ def generate_speech(
                 sigma=sigma,
                 temperature=temperature,
                 output_wav_path=output_path,
+                seed=seed,
             )
         return output_path, f"生成成功! (共 {len(text_list)} 段)"
     except Exception as e:

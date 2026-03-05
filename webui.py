@@ -6,6 +6,7 @@ import os
 import sys
 import uuid
 import json
+import random
 import warnings
 import torch
 import torchaudio
@@ -41,6 +42,7 @@ from spkemb_extractor import SpkembExtractor
 class MingAudio:
     def __init__(self, model_path, device="cuda:0"):
         self.device = device
+        self.seed = random.randint(0, 2**32 - 1)
         self.model = BailingMMNativeForConditionalGeneration.from_pretrained(
             model_path,
             torch_dtype=torch.bfloat16,
@@ -153,6 +155,7 @@ class MingAudio:
         sigma=0.25,
         temperature=0,
         output_wav_path=None,
+        seed=None,
     ):
         if prompt_wav_path is None:
             prompt_waveform, prompt_text, spk_emb = None, None, None
@@ -192,6 +195,7 @@ class MingAudio:
             sigma=sigma,
             temperature=temperature,
             use_zero_spk_emb=use_zero_spk_emb,
+            seed=seed if seed is not None else self.seed,
         )
         if output_wav_path is not None:
             output_dir = os.path.dirname(output_wav_path)
@@ -214,7 +218,10 @@ class MingAudio:
         sigma=0.25,
         temperature=0,
         output_wav_path=None,
+        seed=None,
     ):
+        if seed is None:
+            seed = self.seed
         if prompt_wav_path is None:
             prompt_waveform, prompt_text, spk_emb = None, None, None
             if use_zero_spk_emb:
@@ -258,6 +265,7 @@ class MingAudio:
                 sigma=sigma,
                 temperature=temperature,
                 use_zero_spk_emb=use_zero_spk_emb,
+                seed=seed,
             )
             waveforms.append(waveform)
 
@@ -347,6 +355,30 @@ def create_webui(
             )
         return jsonify(configs_with_pinyin)
 
+    @app.route("/seed", methods=["GET"])
+    def get_seed():
+        if model is None:
+            return jsonify({"success": False, "message": "模型未加载"}), 400
+        return jsonify({"success": True, "seed": model.seed})
+
+    @app.route("/seed", methods=["POST"])
+    def set_seed():
+        if model is None:
+            return jsonify({"success": False, "message": "模型未加载"}), 400
+        data = request.form or request.json
+        seed_value = data.get("seed")
+        if seed_value is not None:
+            try:
+                model.seed = int(seed_value)
+                return jsonify({"success": True, "seed": model.seed})
+            except ValueError:
+                return jsonify({"success": False, "message": "无效的seed值"}), 400
+        else:
+            model.seed = random.randint(0, 2**32 - 1)
+            return jsonify(
+                {"success": True, "seed": model.seed, "message": "已生成新的随机seed"}
+            )
+
     @app.route("/save_config", methods=["POST"])
     def api_save_config():
         data = request.form or request.json
@@ -419,6 +451,7 @@ def create_webui(
         temperature = float(data.get("temperature", 0.0))
         voice_description = data.get("voice_description")
         ip = data.get("ip")
+        seed = data.get("seed")
 
         from inference import generate_speech as _generate_speech
 
@@ -444,6 +477,7 @@ def create_webui(
             voice_description=voice_description,
             ip=ip,
             output_path=output_path,
+            seed=seed,
         )
 
         if result[0] is None:

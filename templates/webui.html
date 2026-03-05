@@ -415,6 +415,7 @@ speaker_2: 你好！"></textarea>
             dropdown.innerHTML = '';
             dropdown.style.display = 'block';
             
+            var filter = input.value || '';
             var filterLower = filter.toLowerCase().trim();
             var filterNoSpace = filterLower.replace(/\s+/g, '');
             

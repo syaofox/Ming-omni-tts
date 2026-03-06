@@ -126,23 +126,22 @@ def save_config(
     if copied_audio:
         config_data["prompt_audio"] = copied_audio
 
-    optional_fields = [
-        "prompt_text",
-        "emotion",
-        "dialect",
-        "style",
-        "speech_speed",
-        "pitch",
-        "volume",
-        "max_decode_steps",
-        "cfg",
-        "sigma",
-        "temperature",
-        "ip",
-        "instruct_type",
-    ]
-    for field in optional_fields:
-        value = locals()[field]
+    optional_fields = {
+        "prompt_text": prompt_text,
+        "emotion": emotion,
+        "dialect": dialect,
+        "style": style,
+        "speech_speed": speech_speed,
+        "pitch": pitch,
+        "volume": volume,
+        "max_decode_steps": max_decode_steps,
+        "cfg": cfg,
+        "sigma": sigma,
+        "temperature": temperature,
+        "ip": ip,
+        "instruct_type": instruct_type,
+    }
+    for field, value in optional_fields.items():
         if value is not None and value != "无":
             config_data[field] = value
 

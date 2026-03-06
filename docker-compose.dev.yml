@@ -6,6 +6,7 @@ services:
       args:
         - UID=${UID:-1000}
         - GID=${GID:-1000}
+    image: ming-omni-tts:dev
     container_name: ming-omni-tts
     # runtime: nvidia
     deploy:

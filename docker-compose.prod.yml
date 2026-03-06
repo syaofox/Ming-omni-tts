@@ -2,10 +2,11 @@ services:
   ming-omni-tts-prod:
     build:
       context: .
-      dockerfile: docker/Dockerfile.prod
+      dockerfile: docker/Dockerfile.prod      
       args:
         - UID=${UID:-1000}
         - GID=${GID:-1000}
+    image: ming-omni-tts:prod    
     container_name: ming-omni-tts-prod
     deploy:
       resources:

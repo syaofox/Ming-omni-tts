@@ -16,10 +16,10 @@ Ming-omni-tts is a high-performance unified audio generation model supporting sp
 # Syntax check a single Python file
 python -m py_compile <file.py>
 
-# Install and run linting
+# Run linting
 pip install ruff && ruff check .
 
-# Run the full test suite (cookbooks/test.py)
+# Run the full test suite
 python cookbooks/test.py
 
 # Run a single test case inline
@@ -43,7 +43,6 @@ python api.py
 ```bash
 docker compose -f docker-compose.dev.yml build
 docker compose -f docker-compose.dev.yml run --rm ming-omni-tts python cookbooks/test.py
-docker compose -f docker-compose.dev.yml run --rm ming-omni-tts python -c "..."
 docker compose -f docker-compose.dev.yml run --rm ming-omni-tts pip install ruff && ruff check .
 ```
 
@@ -103,7 +102,6 @@ except Exception as e:
 ### JavaScript/HTML Guidelines
 - Keep HTML/CSS/JS in `templates/` directory
 - Use `render_template()`, never `render_template_string()`
-- DOM operations: Standard methods only
 
 ---
 

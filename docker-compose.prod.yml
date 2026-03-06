@@ -30,11 +30,11 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     command: >
       sh -c "
-        python webui.py &
+        PORT=7861 python webui.py &
         WEBUI_PID=$$!
         echo 'WebUI started with PID: '$$WEBUI_PID
         sleep 8
-        PORT=7861 python api.py &
+        PORT=7860 python api.py &
         API_PID=$$!
         echo 'API started with PID: '$$API_PID
         wait

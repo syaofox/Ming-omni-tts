@@ -80,7 +80,7 @@ class AudioUploader extends HTMLElement {
 
         if (audioPath) {
             var url = configName ? '/config_audio/' + encodeURIComponent(configName) : audioPath;
-            displayEl.innerHTML = '<div class="audio-container"><audio controls src="' + url + '"></audio><button class="clear-btn" id="clear-btn">清除</button></div><p style="font-size:12px;color:#666;">已加载参考音频</p>';
+            displayEl.innerHTML = '<div class="audio-container"><audio controls src="' + url + '"></audio><button class="clear-btn" id="clear-btn">✕</button></div><p style="font-size:12px;color:#666;">已加载参考音频</p>';
             dropZone.style.display = 'none';
             
             var clearBtn = this.shadowRoot.getElementById('clear-btn');
@@ -153,7 +153,7 @@ class AudioUploader extends HTMLElement {
         if (fileInput.files && fileInput.files[0]) {
             var file = fileInput.files[0];
             var url = URL.createObjectURL(file);
-            displayEl.innerHTML = '<div class="audio-container"><audio controls src="' + url + '"></audio><button class="clear-btn" id="clear-btn">清除</button></div><p style="font-size:12px;color:#666;">' + file.name + '</p>';
+            displayEl.innerHTML = '<div class="audio-container"><audio controls src="' + url + '"></audio><button class="clear-btn" id="clear-btn">✕</button></div><p style="font-size:12px;color:#666;">' + file.name + '</p>';
             dropZone.style.display = 'none';
             
             var clearBtn = this.shadowRoot.getElementById('clear-btn');
@@ -219,15 +219,20 @@ class AudioUploader extends HTMLElement {
                 }
                 .clear-btn {
                     margin-left: 10px;
-                    padding: 6px 12px;
-                    font-size: 12px;
+                    width: 28px;
+                    height: 28px;
+                    padding: 0;
+                    font-size: 16px;
+                    line-height: 1;
                     background: #f44336;
                     color: white;
                     border: none;
-                    border-radius: 4px;
+                    border-radius: 50%;
                     cursor: pointer;
                     vertical-align: middle;
-                    white-space: nowrap;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
                 }
                 .clear-btn:hover {
                     background: #d32f2f;

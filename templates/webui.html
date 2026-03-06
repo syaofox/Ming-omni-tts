@@ -58,13 +58,11 @@
                         <textarea id="instruct_text" rows="4" placeholder="请输入要合成语音的文本..."></textarea>
                     </div>
                     <div class="form-group" id="instruct_prompt_group">
-                        <label>参考音频 (可选，用于音色克隆)：</label>
-                        <div class="drop-zone" id="instruct_drop_zone">
-                            <input type="file" id="instruct_prompt_audio" accept="audio/*">
-                            <p>拖拽音频文件到此处 或 点击选择</p>
-                        </div>
-                        <div id="instruct_prompt_audio_display"></div>
-                        <input type="hidden" id="instruct_config_audio_path">
+                        <audio-uploader 
+                            id="instruct_audio_uploader"
+                            label="参考音频 (可选，用于音色克隆)："
+                            hidden-id="instruct_config_audio_path">
+                        </audio-uploader>
                     </div>
                     
                     <!-- Emotion Controls -->
@@ -152,13 +150,12 @@
                         <textarea id="zs_text" rows="4" placeholder="请输入要合成语音的文本..."></textarea>
                     </div>
                     <div class="form-group">
-                        <label>参考音频 (3-7秒最佳，用于音色克隆)：</label>
-                        <div class="drop-zone" id="zs_drop_zone">
-                            <input type="file" id="zs_prompt_audio" accept="audio/*">
-                            <p>拖拽音频文件到此处 或 点击选择</p>
-                        </div>
-                        <div id="zs_prompt_audio_display"></div>
-                        <input type="hidden" id="zs_config_audio_path">
+                        <audio-uploader 
+                            id="zs_audio_uploader"
+                            label="参考音频 (3-7秒最佳，用于音色克隆)："
+                            hidden-id="zs_config_audio_path"
+                            prompt-text-id="zs_prompt_text">
+                        </audio-uploader>
                     </div>
                     <div class="form-group">
                         <label>参考文本 (可选，用于提升克隆效果)：</label>
@@ -193,30 +190,21 @@ speaker_2: 你好！"></textarea>
                     </div>
                     <div class="form-group">
                         <label>Speaker 1 参考音频：</label>
-                        <div class="drop-zone" id="pod_drop_zone1">
-                            <input type="file" id="pod_prompt_audio1" accept="audio/*">
-                            <p>拖拽音频文件到此处 或 点击选择</p>
-                        </div>
-                        <div id="pod_prompt_audio_display1"></div>
+                        <audio-uploader id="pod_audio_1" label="" hidden-id="pod_audio_path_1"></audio-uploader>
                     </div>
                     <div class="form-group">
                         <label>Speaker 2 参考音频：</label>
-                        <div class="drop-zone" id="pod_drop_zone2">
-                            <input type="file" id="pod_prompt_audio2" accept="audio/*">
-                            <p>拖拽音频文件到此处 或 点击选择</p>
-                        </div>
-                        <div id="pod_prompt_audio_display2"></div>
+                        <audio-uploader id="pod_audio_2" label="" hidden-id="pod_audio_path_2"></audio-uploader>
                     </div>
                     <div class="form-group">
                         <label>Speaker 3 参考音频（可选）：</label>
-                        <div class="drop-zone" id="pod_drop_zone3">
-                            <input type="file" id="pod_prompt_audio3" accept="audio/*">
-                            <p>拖拽音频文件到此处 或 点击选择</p>
-                        </div>
-                        <div id="pod_prompt_audio_display3"></div>
+                        <audio-uploader id="pod_audio_3" label="" hidden-id="pod_audio_path_3"></audio-uploader>
                     </div>
                     <button id="pod_generate" onclick="generatePodcast()" class="generate-btn">生成对话</button>
                     <div id="pod_result"></div>
+                    <input type="hidden" id="pod_audio_path_1">
+                    <input type="hidden" id="pod_audio_path_2">
+                    <input type="hidden" id="pod_audio_path_3">
                 </div>
             </div>
         </div>
@@ -231,11 +219,7 @@ speaker_2: 你好！"></textarea>
                     </div>
                     <div class="form-group">
                         <label>说话人参考音频：</label>
-                        <div class="drop-zone" id="swb_drop_zone">
-                            <input type="file" id="swb_prompt_audio" accept="audio/*">
-                            <p>拖拽音频文件到此处 或 点击选择</p>
-                        </div>
-                        <div id="swb_prompt_audio_display"></div>
+                        <audio-uploader id="swb_audio" label="" hidden-id="swb_audio_path"></audio-uploader>
                     </div>
                     <h4 class="section-title">BGM 描述</h4>
                     <div class="form-row">
@@ -284,6 +268,7 @@ speaker_2: 你好！"></textarea>
                     </div>
                     <button id="swb_generate" onclick="generateSpeechWithBGM()" class="generate-btn">生成带背景音乐的语音</button>
                     <div id="swb_result"></div>
+                    <input type="hidden" id="swb_audio_path">
                 </div>
             </div>
         </div>

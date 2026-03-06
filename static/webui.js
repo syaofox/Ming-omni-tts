@@ -128,10 +128,10 @@ async function loadInstructConfig() {
                 updateInstructVisibility();
             }
             if (data.prompt_audio) {
-                displayConfigAudio(data.prompt_audio, 'instruct_prompt_audio_display');
+                displayConfigAudio(data.prompt_audio, 'instruct_audio_uploader');
                 document.getElementById('instruct_config_audio_path').value = data.prompt_audio;
             } else {
-                clearConfigAudio('instruct_prompt_audio_display');
+                clearConfigAudio('instruct_audio_uploader');
                 document.getElementById('instruct_config_audio_path').value = '';
             }
             if (data.emotion) {
@@ -185,10 +185,10 @@ async function loadZeroShotConfig() {
                 return;
             }
             if (data.prompt_audio) {
-                displayConfigAudio(data.prompt_audio, 'zs_prompt_audio_display');
+                displayConfigAudio(data.prompt_audio, 'zs_audio_uploader');
                 document.getElementById('zs_config_audio_path').value = data.prompt_audio;
             } else {
-                clearConfigAudio('zs_prompt_audio_display');
+                clearConfigAudio('zs_audio_uploader');
                 document.getElementById('zs_config_audio_path').value = '';
             }
             if (data.ip) {
@@ -327,11 +327,7 @@ function showSaveZeroShotConfigModal() {
 
 async function saveZeroShotConfig(configName) {
     console.log('saveZeroShotConfig called');
-    var fileInput = document.getElementById('zs_prompt_audio');
-    var promptAudio = null;
-    if (fileInput && fileInput.files && fileInput.files[0]) {
-        promptAudio = await uploadAudioIfNeeded('zs_prompt_audio');
-    }
+    var promptAudio = await uploadAudioIfNeeded('zs_audio_uploader');
     if (!promptAudio) {
         var savedAudio = document.getElementById('zs_config_audio_path').value;
         console.log('zs_config_audio_path value:', savedAudio);
@@ -472,51 +468,11 @@ function updateInstructVisibility() {
     basicControls.style.display = instructType === 'basic' ? 'block' : 'none';
 }
 
-function initDropZone(dropZoneId, fileInputId, displayId) {
-    var dropZone = document.getElementById(dropZoneId);
-    var fileInput = document.getElementById(fileInputId);
-    
-    if (!dropZone || !fileInput) return;
-    
-    dropZone.addEventListener('click', function() {
-        fileInput.click();
-    });
-    
-    dropZone.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-    });
-    
-    dropZone.addEventListener('dragleave', function() {
-        dropZone.classList.remove('dragover');
-    });
-    
-    dropZone.addEventListener('drop', function(e) {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        var files = e.dataTransfer.files;
-        if (files.length > 0) {
-            fileInput.files = files;
-            var event = new Event('change', { bubbles: true });
-            fileInput.dispatchEvent(event);
-        }
-    });
-    
-    fileInput.addEventListener('change', function() {
-        if (this.files && this.files[0]) {
-            var file = this.files[0];
-            var audioDisplay = document.getElementById(displayId);
-            var url = URL.createObjectURL(file);
-            audioDisplay.innerHTML = '<audio controls src="' + url + '"></audio><p style="font-size:12px;color:#666;">' + file.name + '</p>';
-        }
-    });
-}
-
-function displayConfigAudio(audioPath, displayId) {
-    console.log('displayConfigAudio called:', audioPath, displayId);
-    var audioDisplay = document.getElementById(displayId);
-    if (!audioDisplay) {
-        console.error('Audio display element not found:', displayId);
+function displayConfigAudio(audioPath, uploaderId) {
+    console.log('displayConfigAudio called:', audioPath, uploaderId);
+    var uploader = uploaderId ? document.getElementById(uploaderId) : null;
+    if (!uploader || !uploader.setAudioPath) {
+        console.error('Audio uploader element not found or invalid:', uploaderId);
         return;
     }
     if (audioPath) {
@@ -524,27 +480,22 @@ function displayConfigAudio(audioPath, displayId) {
         console.log('Regex match:', match);
         var configName = match ? match[1] : null;
         console.log('Extracted configName:', configName);
-        if (configName) {
-            audioDisplay.innerHTML = '<audio controls src="/config_audio/' + encodeURIComponent(configName) + '"></audio><p style="font-size:12px;color:#666;">已加载参考音频</p>';
-        } else {
-            audioDisplay.innerHTML = '<p style="font-size:12px;color:#666;">音频路径无效: ' + audioPath + '</p>';
-        }
+        uploader.setAudioPath(audioPath, configName);
     } else {
-        audioDisplay.innerHTML = '';
+        uploader.clear();
     }
 }
 
-function clearConfigAudio(displayId) {
-    var audioDisplay = document.getElementById(displayId);
-    audioDisplay.innerHTML = '';
+function clearConfigAudio(uploaderId) {
+    var uploader = uploaderId ? document.getElementById(uploaderId) : null;
+    if (uploader && uploader.clear) {
+        uploader.clear();
+    }
 }
 
-initDropZone('instruct_drop_zone', 'instruct_prompt_audio', 'instruct_prompt_audio_display');
-initDropZone('zs_drop_zone', 'zs_prompt_audio', 'zs_prompt_audio_display');
-initDropZone('pod_drop_zone1', 'pod_prompt_audio1', 'pod_prompt_audio_display1');
-initDropZone('pod_drop_zone2', 'pod_prompt_audio2', 'pod_prompt_audio_display2');
-initDropZone('pod_drop_zone3', 'pod_prompt_audio3', 'pod_prompt_audio_display3');
-initDropZone('swb_drop_zone', 'swb_prompt_audio', 'swb_prompt_audio_display');
+function getAudioUploader(uploaderId) {
+    return document.getElementById(uploaderId);
+}
 
 document.querySelectorAll('input[type="range"]').forEach(function(slider) {
     slider.addEventListener('input', function() {
@@ -566,6 +517,28 @@ function showResult(id, success, message, audioUrl) {
 
 async function uploadAudioIfNeeded(inputId) {
     var input = document.getElementById(inputId);
+    if (!input) return null;
+    
+    if (input.tagName === 'AUDIO-UPLOADER') {
+        var file = input.getFile();
+        if (file) {
+            var formData = new FormData();
+            formData.append('file', file);
+            var resp = await fetch('/upload', { method: 'POST', body: formData });
+            var data = await resp.json();
+            if (data.success) {
+                input.querySelector = input.getFile;
+                var hiddenId = input.getAttribute('hidden-id');
+                if (hiddenId) {
+                    var hiddenEl = document.getElementById(hiddenId);
+                    if (hiddenEl) hiddenEl.value = data.filepath;
+                }
+                return data.filepath;
+            }
+        }
+        return input.getValue();
+    }
+    
     if (input && input.files && input.files[0]) {
         var formData = new FormData();
         formData.append('file', input.files[0]);
@@ -608,7 +581,7 @@ async function generateInstructTTS() {
     var promptAudio = null;
     
     if (instructType !== 'ip' && instructType !== 'style') {
-        promptAudio = await uploadAudioIfNeeded('instruct_prompt_audio');
+        promptAudio = await uploadAudioIfNeeded('instruct_audio_uploader');
         if (!promptAudio) {
             promptAudio = document.getElementById('instruct_config_audio_path').value || null;
         }
@@ -693,7 +666,7 @@ async function generateZeroShotTTS() {
     }, 100);
 
     var text = document.getElementById('zs_text').value;
-    var promptAudio = await uploadAudioIfNeeded('zs_prompt_audio');
+    var promptAudio = await uploadAudioIfNeeded('zs_audio_uploader');
     if (!promptAudio) {
         promptAudio = document.getElementById('zs_config_audio_path').value || null;
     }
@@ -772,7 +745,11 @@ async function generatePodcast() {
 
     var promptAudios = [];
     for (var i = 1; i <= 3; i++) {
-        var audio = await uploadAudioIfNeeded('pod_prompt_audio' + i);
+        var audio = await uploadAudioIfNeeded('pod_audio_' + i);
+        if (!audio) {
+            var hiddenPath = document.getElementById('pod_audio_path_' + i);
+            audio = hiddenPath ? hiddenPath.value : null;
+        }
         if (audio) {
             promptAudios.push(audio);
         }
@@ -838,7 +815,10 @@ async function generateSpeechWithBGM() {
         return;
     }
 
-    var promptAudio = await uploadAudioIfNeeded('swb_prompt_audio');
+    var promptAudio = await uploadAudioIfNeeded('swb_audio');
+    if (!promptAudio) {
+        promptAudio = document.getElementById('swb_audio_path').value || null;
+    }
     if (!promptAudio) {
         clearInterval(timer);
         showResult('swb', false, '请上传说话人参考音频');

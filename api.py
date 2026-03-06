@@ -40,23 +40,22 @@ def create_api(model):
         config_list = get_config_list()
         default_speaker = config_list[0]["name"] if config_list else "小缘"
 
-        config_list_json = "[]"
+        config_list_for_template = []
         if config_list:
-            config_list_json = (
-                "["
-                + ",".join(
-                    [
-                        f'{{"name": "{c["name"]}", "value": "{c["name"]}", "pinyin": "{get_pinyin(c["name"])}", "initials": "{get_pinyin_initials(c["name"])}"}}'
-                        for c in config_list
-                    ]
-                )
-                + "]"
-            )
+            config_list_for_template = [
+                {
+                    "name": c["name"],
+                    "value": c["name"],
+                    "pinyin": get_pinyin(c["name"]),
+                    "initials": get_pinyin_initials(c["name"]),
+                }
+                for c in config_list
+            ]
 
         if not text:
             return render_template(
                 "api.html",
-                config_list=config_list_json,
+                config_list=config_list_for_template,
                 default_speaker=default_speaker,
             )
 

@@ -471,8 +471,10 @@ class SearchSelect extends HTMLElement {
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
-                    display: block;
-                    margin-bottom: 15px;
+                    display: flex;
+                    flex: 1;
+                    min-width: 200px;
+                    margin-bottom: 0;
                 }
                 label {
                     display: block;
@@ -482,6 +484,7 @@ class SearchSelect extends HTMLElement {
                 }
                 .search-container {
                     position: relative;
+                    flex: 1;
                 }
                 input {
                     width: 100%;

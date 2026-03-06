@@ -84,6 +84,9 @@ async function loadInstructConfig() {
             if (data.instruct_type) {
                 document.getElementById('instruct_type').value = data.instruct_type;
                 updateInstructVisibility();
+            } else {
+                document.getElementById('instruct_type').value = 'emotion';
+                updateInstructVisibility();
             }
             if (data.prompt_audio) {
                 displayConfigAudio(data.prompt_audio, 'instruct_audio_uploader');
@@ -92,28 +95,43 @@ async function loadInstructConfig() {
             }
             if (data.emotion) {
                 document.getElementById('instruct_emotion').value = data.emotion;
+            } else {
+                document.getElementById('instruct_emotion').value = '高兴';
             }
             if (data.dialect) {
                 document.getElementById('instruct_dialect').value = data.dialect;
+            } else {
+                document.getElementById('instruct_dialect').value = '普通话';
             }
             if (data.ip) {
                 var ipSelect = document.getElementById('instruct_ip_select');
                 if (ipSelect && ipSelect.setValue) ipSelect.setValue(data.ip);
+            } else {
+                var ipSelect = document.getElementById('instruct_ip_select');
+                if (ipSelect && ipSelect.clear) ipSelect.clear();
             }
             if (data.style) {
                 document.getElementById('instruct_style').value = data.style;
+            } else {
+                document.getElementById('instruct_style').value = '';
             }
             if (data.speech_speed) {
                 var speedMap = {0.7: '慢速', 1.0: '中速', 1.3: '快速'};
                 document.getElementById('instruct_speed').value = speedMap[data.speech_speed] || '中速';
+            } else {
+                document.getElementById('instruct_speed').value = '中速';
             }
             if (data.pitch) {
                 var pitchMap = {0.8: '低', 1.0: '中', 1.2: '高'};
                 document.getElementById('instruct_pitch').value = pitchMap[data.pitch] || '中';
+            } else {
+                document.getElementById('instruct_pitch').value = '中';
             }
             if (data.volume) {
                 var volumeMap = {0.7: '低', 1.0: '中', 1.3: '高'};
                 document.getElementById('instruct_volume').value = volumeMap[data.volume] || '中';
+            } else {
+                document.getElementById('instruct_volume').value = '中';
             }
             showConfigMessage('instruct_config_msg', '配置 "' + configName + '" 已加载', false);
         } else {
@@ -149,9 +167,14 @@ async function loadZeroShotConfig() {
             if (data.ip) {
                 var ipSelect = document.getElementById('zs_ip_select');
                 if (ipSelect && ipSelect.setValue) ipSelect.setValue(data.ip);
+            } else {
+                var ipSelect = document.getElementById('zs_ip_select');
+                if (ipSelect && ipSelect.clear) ipSelect.clear();
             }
             if (data.prompt_text) {
                 document.getElementById('zs_prompt_text').value = data.prompt_text;
+            } else {
+                document.getElementById('zs_prompt_text').value = '';
             }
             showConfigMessage('zs_config_msg', '配置 "' + configName + '" 已加载', false);
         } else {

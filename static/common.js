@@ -546,10 +546,21 @@ class SearchSelect extends HTMLElement {
 
         input.addEventListener('input', function() {
             self._showDropdown(this.value);
+            if (!this.value) {
+                self._selectedValue = null;
+                var hiddenInput = self.shadowRoot.getElementById('hidden-input');
+                if (hiddenInput) hiddenInput.value = '';
+                
+                var hiddenId = self.getAttribute('hidden-id');
+                if (hiddenId) {
+                    var hiddenEl = document.getElementById(hiddenId);
+                    if (hiddenEl) hiddenEl.value = '';
+                }
+            }
         });
 
         input.addEventListener('focus', function() {
-            self._showDropdown(self._input ? self._input.value : '');
+            self._showDropdown(self.shadowRoot.getElementById('search-input').value);
         });
 
         document.addEventListener('click', function(e) {

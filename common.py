@@ -122,22 +122,29 @@ def save_config(
     config_data = {
         "name": config_name,
         "task_type": task_type,
-        "prompt_audio": copied_audio,
-        "prompt_text": prompt_text,
-        "emotion": emotion,
-        "dialect": dialect,
-        "style": style,
-        "voice_description": voice_description,
-        "speech_speed": speech_speed,
-        "pitch": pitch,
-        "volume": volume,
-        "max_decode_steps": max_decode_steps,
-        "cfg": cfg,
-        "sigma": sigma,
-        "temperature": temperature,
-        "ip": ip,
-        "instruct_type": instruct_type,
     }
+
+    optional_fields = [
+        "prompt_audio",
+        "prompt_text",
+        "emotion",
+        "dialect",
+        "style",
+        "voice_description",
+        "speech_speed",
+        "pitch",
+        "volume",
+        "max_decode_steps",
+        "cfg",
+        "sigma",
+        "temperature",
+        "ip",
+        "instruct_type",
+    ]
+    for field in optional_fields:
+        value = locals()[field]
+        if value is not None and value != "无":
+            config_data[field] = value
 
     config_file = os.path.join(config_path, "config.json")
     with open(config_file, "w", encoding="utf-8") as f:

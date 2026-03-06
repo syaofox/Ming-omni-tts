@@ -30,6 +30,7 @@ label {
 }
 
 input[type="text"],
+input[type="number"],
 textarea,
 select {
     width: 100%;
@@ -337,6 +338,31 @@ audio {
 
 .params-grid .form-group {
     margin-bottom: 8px;
+}
+
+.form-row-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: flex-end;
+}
+
+.form-row-inline .form-group {
+    flex: 1;
+    min-width: 120px;
+}
+
+.form-row-inline .form-group:first-child {
+    flex: 2;
+}
+
+.form-row-inline label {
+    text-align: left;
+}
+
+.form-row-inline input[type="text"],
+.form-row-inline input[type="number"] {
+    width: 100%;
 }
 
 #toast-container {

@@ -8,9 +8,13 @@ import sys
 import uuid
 
 import torch
-from flask import Flask, request, send_file, render_template
+from flask import Flask, request, send_file, render_template, jsonify
 from flask_cors import CORS
 from loguru import logger
+
+scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scripts")
+sys.path.insert(0, scripts_dir)
+from generate_http_tts_config import generate_http_tts_config
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
@@ -53,10 +57,16 @@ def create_api(model):
             ]
 
         if not text:
+            host = request.host
+            if ":" in host:
+                server_ip = host.split(":")[0]
+            else:
+                server_ip = host
             return render_template(
                 "api.html",
                 config_list=config_list_for_template,
                 default_speaker=default_speaker,
+                server_ip=server_ip,
             )
 
         logger.info(f"API请求: text='{text[:50]}...' speaker='{speaker}'")
@@ -136,6 +146,36 @@ def create_api(model):
         except Exception as e:
             logger.error(f"生成失败: {e}")
             return f"生成失败: {str(e)}", 500
+
+    @app.route("/api/generate-config", methods=["POST"])
+    def generate_config():
+        data = request.get_json() or {}
+        ip = data.get("ip", "10.10.10.10")
+        port = data.get("port", 7861)
+
+        try:
+            output_path = os.path.join(current_dir, "saved_configs", "httpTts.json")
+            configs = generate_http_tts_config(
+                ip=ip,
+                port=port,
+                output_path=output_path,
+            )
+            return jsonify(
+                {"success": True, "count": len(configs), "preview": configs[:3]}
+            )
+        except Exception as e:
+            logger.error(f"生成配置失败: {e}")
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    @app.route("/api/download-config")
+    def download_config():
+        config_path = os.path.join(current_dir, "saved_configs", "httpTts.json")
+        return send_file(
+            config_path,
+            mimetype="application/json",
+            as_attachment=True,
+            download_name="httpTts.json",
+        )
 
     return app
 

@@ -35,6 +35,27 @@
         
         <div id="result"></div>
         
+        <hr>
+        
+        <h3 class="section-title">生成 HTTP TTS 配置</h3>
+        
+        <div class="form-row-inline">
+            <div class="form-group">
+                <label>服务器 IP：</label>
+                <input type="text" id="config_ip" placeholder="如: 10.10.10.10" value="{{ server_ip }}">
+            </div>
+            
+            <div class="form-group">
+                <label>端口：</label>
+                <input type="number" id="config_port" placeholder="7861" value="7861">
+            </div>
+        </div>
+        
+        <button id="generate_config" onclick="generateConfig()">生成配置</button>
+        <button id="download_config" onclick="downloadConfig()" disabled>下载 JSON</button>
+        
+        <div id="config_preview"></div>
+        
         <div class="example">
             <strong>API 调用示例：</strong><br><br>
             <code>GET /?text=你好世界&amp;speaker=小缘</code>
@@ -78,6 +99,48 @@
                 btn.disabled = false;
                 btn.textContent = '生成语音';
             });
+        }
+        
+        function generateConfig() {
+            var btn = document.getElementById('generate_config');
+            var ip = document.getElementById('config_ip').value || '10.10.10.10';
+            var port = document.getElementById('config_port').value || 7861;
+            
+            btn.disabled = true;
+            btn.textContent = '生成中...';
+            
+            fetch('/api/generate-config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ip: ip, port: parseInt(port)})
+            }).then(function(resp) {
+                return resp.json();
+            }).then(function(data) {
+                var preview = document.getElementById('config_preview');
+                if (data.success) {
+                    preview.className = 'result success';
+                    preview.style.display = 'block';
+                    var previewText = JSON.stringify(data.preview, null, 2);
+                    preview.innerHTML = '<p>已生成 ' + data.count + ' 个配置项</p><pre>' + previewText + '</pre>';
+                    document.getElementById('download_config').disabled = false;
+                } else {
+                    preview.className = 'result error';
+                    preview.style.display = 'block';
+                    preview.innerHTML = '<p>生成失败: ' + data.error + '</p>';
+                }
+            }).catch(function(e) {
+                var preview = document.getElementById('config_preview');
+                preview.className = 'result error';
+                preview.style.display = 'block';
+                preview.innerHTML = '<p>错误: ' + e.message + '</p>';
+            }).then(function() {
+                btn.disabled = false;
+                btn.textContent = '生成配置';
+            });
+        }
+        
+        function downloadConfig() {
+            window.location.href = '/api/download-config';
         }
     </script>
 </body>

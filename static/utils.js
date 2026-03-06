@@ -49,7 +49,7 @@ function initDropZone(dropZoneId, fileInputId, displayId) {
             var file = this.files[0];
             var audioDisplay = document.getElementById(displayId);
             var url = URL.createObjectURL(file);
-            audioDisplay.innerHTML = '<audio controls src="' + url + '"></audio><p style="font-size:12px;color:#666;">' + file.name + '</p>';
+            audioDisplay.innerHTML = '<audio controls src="' + url + '"></audio><p class="audio-display-text">' + file.name + '</p>';
         }
     });
 }

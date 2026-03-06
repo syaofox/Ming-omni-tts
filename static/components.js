@@ -114,7 +114,7 @@ class AudioUploader extends HTMLElement {
             } else {
                 url = audioPath;
             }
-            displayEl.innerHTML = '<div class="audio-container"><audio controls src="' + url + '"></audio><button class="clear-btn" id="clear-btn">✕</button></div><p style="font-size:12px;color:#666;">已加载参考音频</p>';
+            displayEl.innerHTML = '<div class="audio-container"><audio controls src="' + url + '"></audio><button class="clear-btn" id="clear-btn">✕</button></div><p class="audio-display-text">已加载参考音频</p>';
             dropZone.style.display = 'none';
             
             var clearBtn = this.shadowRoot.getElementById('clear-btn');
@@ -187,7 +187,7 @@ class AudioUploader extends HTMLElement {
         if (fileInput.files && fileInput.files[0]) {
             var file = fileInput.files[0];
             var url = URL.createObjectURL(file);
-            displayEl.innerHTML = '<div class="audio-container"><audio controls src="' + url + '"></audio><button class="clear-btn" id="clear-btn">✕</button></div><p style="font-size:12px;color:#666;">' + file.name + '</p>';
+            displayEl.innerHTML = '<div class="audio-container"><audio controls src="' + url + '"></audio><button class="clear-btn" id="clear-btn">✕</button></div><p class="audio-display-text">' + file.name + '</p>';
             dropZone.style.display = 'none';
             
             var clearBtn = this.shadowRoot.getElementById('clear-btn');

@@ -365,6 +365,11 @@ audio {
     width: 100%;
 }
 
+.audio-display-text {
+    font-size: 12px;
+    color: #666;
+}
+
 #toast-container {
     position: fixed;
     top: 20px;

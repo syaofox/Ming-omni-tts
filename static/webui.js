@@ -163,19 +163,7 @@ async function loadZeroShotConfig() {
 }
 
 function showConfigMessage(msgId, message, isError) {
-    var container = document.getElementById('toast-container');
-    var toast = document.createElement('div');
-    toast.className = 'toast ' + (isError ? 'error' : 'success');
-    toast.textContent = message;
-    container.appendChild(toast);
-    setTimeout(function() {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(100%)';
-        toast.style.transition = 'all 0.3s ease-out';
-        setTimeout(function() {
-            container.removeChild(toast);
-        }, 300);
-    }, 3000);
+    showToast(message, isError);
 }
 
 function showSaveInstructConfigModal() {

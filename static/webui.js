@@ -195,6 +195,9 @@ async function loadZeroShotConfig() {
                 document.getElementById('zs_ip_search').value = data.ip;
                 document.getElementById('zs_instruct_ip').value = data.ip;
             }
+            if (data.prompt_text) {
+                document.getElementById('zs_prompt_text').value = data.prompt_text;
+            }
             showConfigMessage('zs_config_msg', '配置 "' + configName + '" 已加载', false);
         } else {
             showConfigMessage('zs_config_msg', '加载失败: ' + result.message, true);
@@ -336,11 +339,13 @@ async function saveZeroShotConfig(configName) {
     }
 
     var ip = document.getElementById('zs_instruct_ip').value;
+    var promptText = document.getElementById('zs_prompt_text').value || null;
 
     var data = {
         config_name: configName,
         task_type: 'Zero-shot TTS',
         prompt_audio: promptAudio,
+        prompt_text: promptText,
         ip: ip || null,
     };
 
@@ -693,6 +698,7 @@ async function generateZeroShotTTS() {
         promptAudio = document.getElementById('zs_config_audio_path').value || null;
     }
     var ip = document.getElementById('zs_instruct_ip').value;
+    var promptText = document.getElementById('zs_prompt_text').value || null;
 
     if (!text) {
         clearInterval(timer);
@@ -712,6 +718,7 @@ async function generateZeroShotTTS() {
         task_type: '零样本语音合成 (Zero-shot TTS)',
         text: text,
         prompt_audio: promptAudio,
+        prompt_text: promptText,
         ip: ip || null,
         seed: parseInt(document.getElementById('settings_seed').value) || null,
     };

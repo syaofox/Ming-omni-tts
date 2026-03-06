@@ -53,6 +53,7 @@
         
         <button id="generate_config" onclick="generateConfig()">生成配置</button>
         <button id="download_config" onclick="downloadConfig()" disabled>下载 JSON</button>
+        <button id="copy_url" onclick="copyDownloadUrl()" disabled>复制下载 URL</button>
         
         <div id="config_preview"></div>
         
@@ -123,6 +124,7 @@
                     var previewText = JSON.stringify(data.preview, null, 2);
                     preview.innerHTML = '<p>已生成 ' + data.count + ' 个配置项</p><pre>' + previewText + '</pre>';
                     document.getElementById('download_config').disabled = false;
+                    document.getElementById('copy_url').disabled = false;
                 } else {
                     preview.className = 'result error';
                     preview.style.display = 'block';
@@ -141,6 +143,18 @@
         
         function downloadConfig() {
             window.location.href = '/api/download-config';
+        }
+        
+        function copyDownloadUrl() {
+            var url = window.location.origin + '/api/download-config';
+            navigator.clipboard.writeText(url).then(function() {
+                var btn = document.getElementById('copy_url');
+                var originalText = btn.textContent;
+                btn.textContent = '已复制!';
+                setTimeout(function() {
+                    btn.textContent = originalText;
+                }, 2000);
+            });
         }
     </script>
 </body>

@@ -338,3 +338,28 @@ audio {
 .params-grid .form-group {
     margin-bottom: 8px;
 }
+
+#toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+}
+
+.toast {
+    padding: 12px 20px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.3s ease-out;
+}
+
+.toast.success {
+    background: #4CAF50;
+    color: white;
+}
+
+.toast.error {
+    background: #f44336;
+    color: white;
+}

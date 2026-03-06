@@ -183,6 +183,7 @@ class AudioUploader extends HTMLElement {
         this.attachShadow({ mode: 'open' });
         this._fileInput = null;
         this._audioUrl = null;
+        this._audioPath = null;
     }
 
     static get observedAttributes() {
@@ -201,7 +202,15 @@ class AudioUploader extends HTMLElement {
     }
 
     getValue() {
-        return this._fileInput ? this._fileInput.dataset.filepath : null;
+        if (this._audioPath) return this._audioPath;
+        
+        var hiddenId = this.getAttribute('hidden-id');
+        if (hiddenId) {
+            var hiddenEl = document.getElementById(hiddenId);
+            if (hiddenEl && hiddenEl.value) return hiddenEl.value;
+        }
+        
+        return null;
     }
 
     getFile() {
@@ -218,6 +227,8 @@ class AudioUploader extends HTMLElement {
             this._fileInput.value = '';
             delete this._fileInput.dataset.filepath;
         }
+
+        this._audioPath = null;
 
         var hiddenId = this.getAttribute('hidden-id');
         if (hiddenId) {
@@ -237,6 +248,14 @@ class AudioUploader extends HTMLElement {
         var displayEl = this.shadowRoot.getElementById('audio-display');
         var dropZone = this.shadowRoot.getElementById('drop-zone');
         if (!displayEl || !dropZone) return;
+
+        this._audioPath = audioPath;
+
+        var hiddenId = this.getAttribute('hidden-id');
+        if (hiddenId) {
+            var hiddenEl = document.getElementById(hiddenId);
+            if (hiddenEl) hiddenEl.value = audioPath;
+        }
 
         if (audioPath) {
             var url = configName ? '/config_audio/' + encodeURIComponent(configName) : audioPath;

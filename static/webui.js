@@ -129,10 +129,8 @@ async function loadInstructConfig() {
             }
             if (data.prompt_audio) {
                 displayConfigAudio(data.prompt_audio, 'instruct_audio_uploader');
-                document.getElementById('instruct_config_audio_path').value = data.prompt_audio;
             } else {
                 clearConfigAudio('instruct_audio_uploader');
-                document.getElementById('instruct_config_audio_path').value = '';
             }
             if (data.emotion) {
                 document.getElementById('instruct_emotion').value = data.emotion;
@@ -186,10 +184,8 @@ async function loadZeroShotConfig() {
             }
             if (data.prompt_audio) {
                 displayConfigAudio(data.prompt_audio, 'zs_audio_uploader');
-                document.getElementById('zs_config_audio_path').value = data.prompt_audio;
             } else {
                 clearConfigAudio('zs_audio_uploader');
-                document.getElementById('zs_config_audio_path').value = '';
             }
             if (data.ip) {
                 document.getElementById('zs_ip_search').value = data.ip;
@@ -241,15 +237,12 @@ async function saveInstructConfig(configName) {
     console.log('saveInstructConfig called, instructType:', instructType);
     
     if (instructType !== 'ip' && instructType !== 'style') {
-        var fileInput = document.getElementById('instruct_prompt_audio');
-        if (fileInput && fileInput.files && fileInput.files[0]) {
-            promptAudio = await uploadAudioIfNeeded('instruct_prompt_audio');
-            console.log('Uploaded new audio:', promptAudio);
-        }
+        var uploader = document.getElementById('instruct_audio_uploader');
+        promptAudio = await uploadAudioIfNeeded('instruct_audio_uploader');
+        console.log('Uploaded new audio:', promptAudio);
         if (!promptAudio) {
-            var savedAudio = document.getElementById('instruct_config_audio_path').value;
-            console.log('Saved audio path from hidden input:', savedAudio);
-            promptAudio = savedAudio || null;
+            promptAudio = uploader ? uploader.getValue() : null;
+            console.log('Saved audio path from uploader:', promptAudio);
         }
     }
     
@@ -329,9 +322,9 @@ async function saveZeroShotConfig(configName) {
     console.log('saveZeroShotConfig called');
     var promptAudio = await uploadAudioIfNeeded('zs_audio_uploader');
     if (!promptAudio) {
-        var savedAudio = document.getElementById('zs_config_audio_path').value;
-        console.log('zs_config_audio_path value:', savedAudio);
-        promptAudio = savedAudio || null;
+        var uploader = document.getElementById('zs_audio_uploader');
+        promptAudio = uploader ? uploader.getValue() : null;
+        console.log('zs audio uploader value:', promptAudio);
     }
 
     var ip = document.getElementById('zs_instruct_ip').value;
@@ -423,6 +416,9 @@ function hideIPDropdown() {
 }
 
 document.getElementById('ip_search').addEventListener('input', function() {
+    if (!this.value) {
+        document.getElementById('instruct_ip').value = '';
+    }
     showIPDropdown('ip_search', 'ip_dropdown', 'instruct_ip');
 });
 
@@ -431,6 +427,9 @@ document.getElementById('ip_search').addEventListener('focus', function() {
 });
 
 document.getElementById('zs_ip_search').addEventListener('input', function() {
+    if (!this.value) {
+        document.getElementById('zs_instruct_ip').value = '';
+    }
     showIPDropdown('zs_ip_search', 'zs_ip_dropdown', 'zs_instruct_ip');
 });
 
@@ -527,12 +526,7 @@ async function uploadAudioIfNeeded(inputId) {
             var resp = await fetch('/upload', { method: 'POST', body: formData });
             var data = await resp.json();
             if (data.success) {
-                input.querySelector = input.getFile;
-                var hiddenId = input.getAttribute('hidden-id');
-                if (hiddenId) {
-                    var hiddenEl = document.getElementById(hiddenId);
-                    if (hiddenEl) hiddenEl.value = data.filepath;
-                }
+                input.setAudioPath(data.filepath, null);
                 return data.filepath;
             }
         }
@@ -583,7 +577,8 @@ async function generateInstructTTS() {
     if (instructType !== 'ip' && instructType !== 'style') {
         promptAudio = await uploadAudioIfNeeded('instruct_audio_uploader');
         if (!promptAudio) {
-            promptAudio = document.getElementById('instruct_config_audio_path').value || null;
+            var uploader = document.getElementById('instruct_audio_uploader');
+            promptAudio = uploader ? uploader.getValue() : null;
         }
     }
 
@@ -668,7 +663,8 @@ async function generateZeroShotTTS() {
     var text = document.getElementById('zs_text').value;
     var promptAudio = await uploadAudioIfNeeded('zs_audio_uploader');
     if (!promptAudio) {
-        promptAudio = document.getElementById('zs_config_audio_path').value || null;
+        var uploader = document.getElementById('zs_audio_uploader');
+        promptAudio = uploader ? uploader.getValue() : null;
     }
     var ip = document.getElementById('zs_instruct_ip').value;
     var promptText = document.getElementById('zs_prompt_text').value || null;
@@ -745,10 +741,10 @@ async function generatePodcast() {
 
     var promptAudios = [];
     for (var i = 1; i <= 3; i++) {
+        var uploader = document.getElementById('pod_audio_' + i);
         var audio = await uploadAudioIfNeeded('pod_audio_' + i);
-        if (!audio) {
-            var hiddenPath = document.getElementById('pod_audio_path_' + i);
-            audio = hiddenPath ? hiddenPath.value : null;
+        if (!audio && uploader) {
+            audio = uploader.getValue();
         }
         if (audio) {
             promptAudios.push(audio);
@@ -817,7 +813,8 @@ async function generateSpeechWithBGM() {
 
     var promptAudio = await uploadAudioIfNeeded('swb_audio');
     if (!promptAudio) {
-        promptAudio = document.getElementById('swb_audio_path').value || null;
+        var uploader = document.getElementById('swb_audio');
+        promptAudio = uploader ? uploader.getValue() : null;
     }
     if (!promptAudio) {
         clearInterval(timer);

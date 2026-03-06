@@ -78,7 +78,6 @@ class MingAudio:
                 {
                     "序号": 1,
                     "说话人": "speaker_1",
-                    "音色描述": None,
                     "方言": None,
                     "风格": None,
                     "语速": None,
@@ -405,7 +404,6 @@ def create_webui(
                 emotion=data.get("emotion"),
                 dialect=data.get("dialect"),
                 style=data.get("style"),
-                voice_description=data.get("voice_description"),
                 speech_speed=float(data.get("speech_speed", 1.0))
                 if data.get("speech_speed")
                 else None,
@@ -478,7 +476,6 @@ def create_webui(
         cfg = float(data.get("cfg", 2.0))
         sigma = float(data.get("sigma", 0.25))
         temperature = float(data.get("temperature", 0.0))
-        voice_description = data.get("voice_description")
         ip = data.get("ip")
         seed = data.get("seed")
 
@@ -523,7 +520,6 @@ def create_webui(
             cfg=cfg,
             sigma=sigma,
             temperature=temperature,
-            voice_description=voice_description,
             ip=ip,
             output_path=output_path,
             seed=seed,

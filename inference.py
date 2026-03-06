@@ -7,7 +7,6 @@ import json
 
 
 def build_instruction(
-    voice_description,
     emotion,
     dialect,
     style,
@@ -19,33 +18,18 @@ def build_instruction(
     instruction = {}
     if ip and ip.strip():
         instruction["IP"] = ip.strip()
-    if voice_description and voice_description.strip():
-        instruction["音色描述"] = voice_description.strip()
-        if emotion and emotion != "无":
-            instruction["情感"] = emotion
-        if dialect and dialect != "无":
-            instruction["方言"] = dialect
-        if style and style != "无":
-            instruction["风格"] = style
-        if speech_speed and speech_speed != 1.0:
-            instruction["语速"] = speech_speed
-        if pitch and pitch != 1.0:
-            instruction["基频"] = pitch
-        if volume and volume != 1.0:
-            instruction["音量"] = volume
-    else:
-        if emotion and emotion != "无":
-            instruction["情感"] = emotion
-        if dialect and dialect != "无":
-            instruction["方言"] = dialect
-        if style and style != "无":
-            instruction["风格"] = style
-        if speech_speed and speech_speed != 1.0:
-            instruction["语速"] = speech_speed
-        if pitch and pitch != 1.0:
-            instruction["基频"] = pitch
-        if volume and volume != 1.0:
-            instruction["音量"] = volume
+    if emotion and emotion != "无":
+        instruction["情感"] = emotion
+    if dialect and dialect != "无":
+        instruction["方言"] = dialect
+    if style and style != "无":
+        instruction["风格"] = style
+    if speech_speed and speech_speed != 1.0:
+        instruction["语速"] = speech_speed
+    if pitch and pitch != 1.0:
+        instruction["基频"] = pitch
+    if volume and volume != 1.0:
+        instruction["音量"] = volume
     return instruction if instruction else None
 
 
@@ -213,7 +197,6 @@ def generate_speech(
     cfg=2.0,
     sigma=0.25,
     temperature=0.0,
-    voice_description=None,
     ip=None,
     output_path=None,
     seed=None,
@@ -270,7 +253,6 @@ def generate_speech(
         instruction = {"BGM": bgm}
     else:
         instruction = build_instruction(
-            voice_description=voice_description,
             emotion=emotion,
             dialect=dialect,
             style=style,

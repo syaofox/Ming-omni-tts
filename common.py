@@ -62,7 +62,7 @@ def copy_audio_to_config_dir(audio_path: str, config_name: str):
     audio_ext = os.path.splitext(audio_path)[1]
     dest_path = os.path.join(config_audio_dir, f"ref_audio{audio_ext}")
     shutil.copy2(audio_path, dest_path)
-    return dest_path
+    return os.path.relpath(dest_path, os.path.join(CONFIG_DIR, config_name))
 
 
 def save_config(
@@ -73,7 +73,6 @@ def save_config(
     emotion=None,
     dialect=None,
     style=None,
-    voice_description=None,
     speech_speed=None,
     pitch=None,
     volume=None,
@@ -124,13 +123,14 @@ def save_config(
         "task_type": task_type,
     }
 
+    if copied_audio:
+        config_data["prompt_audio"] = copied_audio
+
     optional_fields = [
-        "prompt_audio",
         "prompt_text",
         "emotion",
         "dialect",
         "style",
-        "voice_description",
         "speech_speed",
         "pitch",
         "volume",
@@ -185,6 +185,13 @@ def load_config(config_name: str):
 
     with open(config_path, "r", encoding="utf-8") as f:
         config_data = json.load(f)
+
+    if config_data.get("prompt_audio"):
+        audio_path = config_data["prompt_audio"]
+        if not os.path.isabs(audio_path):
+            config_data["prompt_audio"] = os.path.join(
+                CONFIG_DIR, config_name, audio_path
+            )
 
     return config_data, "配置加载成功"
 

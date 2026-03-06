@@ -366,6 +366,55 @@ function switchTab(tabId) {
     document.getElementById(tabId).classList.add('active');
 }
 
+function disablePodcastInputs(disabled) {
+    document.getElementById('pod_text').disabled = disabled;
+    for (var i = 1; i <= 3; i++) {
+        var uploader = document.getElementById('pod_audio_' + i);
+        if (uploader) uploader.setDisabled(disabled);
+    }
+}
+
+function disableInstructInputs(disabled) {
+    document.getElementById('instruct_text').disabled = disabled;
+    var uploader = document.getElementById('instruct_audio_uploader');
+    if (uploader) uploader.setDisabled(disabled);
+}
+
+function disableZeroShotInputs(disabled) {
+    document.getElementById('zs_text').disabled = disabled;
+    document.getElementById('zs_prompt_text').disabled = disabled;
+    var uploader = document.getElementById('zs_audio_uploader');
+    if (uploader) uploader.setDisabled(disabled);
+}
+
+function disableSpeechWithBGMInputs(disabled) {
+    document.getElementById('swb_text').disabled = disabled;
+    var uploader = document.getElementById('swb_audio');
+    if (uploader) uploader.setDisabled(disabled);
+    var ids = ['swb_genre', 'swb_mood', 'swb_instrument', 'swb_theme', 'swb_snr'];
+    ids.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+    });
+}
+
+function disableBGMInputs(disabled) {
+    var ids = ['bgm_genre', 'bgm_mood', 'bgm_instrument', 'bgm_theme', 'bgm_max_decode_steps', 'bgm_duration'];
+    ids.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+    });
+}
+
+function disableTTAInputs(disabled) {
+    document.getElementById('tta_text').disabled = disabled;
+    var ids = ['tta_max_decode_steps', 'tta_cfg', 'tta_sigma', 'tta_temperature'];
+    ids.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+    });
+}
+
 function showResult(id, success, message, audioUrl) {
     showResultCommon(id + '_result', success, message, audioUrl);
 }
@@ -405,6 +454,7 @@ async function uploadAudioIfNeeded(inputId) {
 async function generateInstructTTS() {
     var btn = document.getElementById('instruct_generate');
     btn.disabled = true;
+    disableInstructInputs(true);
     
     var startTime = Date.now();
     var timer = null;
@@ -424,6 +474,7 @@ async function generateInstructTTS() {
         showResult('instruct', false, '请输入文本');
         btn.disabled = false;
         btn.textContent = '生成语音';
+        disableInstructInputs(false);
         return;
     }
 
@@ -498,11 +549,13 @@ async function generateInstructTTS() {
 
     btn.disabled = false;
     btn.textContent = '生成语音';
+    disableInstructInputs(false);
 }
 
 async function generateZeroShotTTS() {
     var btn = document.getElementById('zs_generate');
     btn.disabled = true;
+    disableZeroShotInputs(true);
     
     var startTime = Date.now();
     var timer = null;
@@ -529,6 +582,7 @@ async function generateZeroShotTTS() {
         clearInterval(timer);
         showResult('zs', false, '请输入文本');
         btn.disabled = false;
+        disableZeroShotInputs(false);
         return;
     }
 
@@ -536,6 +590,7 @@ async function generateZeroShotTTS() {
         clearInterval(timer);
         showResult('zs', false, '请上传参考音频或选择内置人物');
         btn.disabled = false;
+        disableZeroShotInputs(false);
         return;
     }
 
@@ -569,11 +624,13 @@ async function generateZeroShotTTS() {
 
     btn.disabled = false;
     btn.textContent = '克隆音色并生成语音';
+    disableZeroShotInputs(false);
 }
 
 async function generatePodcast() {
     var btn = document.getElementById('pod_generate');
     btn.disabled = true;
+    disablePodcastInputs(true);
     
     var startTime = Date.now();
     var timer = null;
@@ -592,6 +649,7 @@ async function generatePodcast() {
         clearInterval(timer);
         showResult('pod', false, '请输入对话脚本');
         btn.disabled = false;
+        disablePodcastInputs(false);
         return;
     }
 
@@ -611,6 +669,7 @@ async function generatePodcast() {
         clearInterval(timer);
         showResult('pod', false, '请至少上传两个说话人的参考音频');
         btn.disabled = false;
+        disablePodcastInputs(false);
         return;
     }
 
@@ -641,11 +700,13 @@ async function generatePodcast() {
     }
 
     btn.disabled = false;
+    disablePodcastInputs(false);
 }
 
 async function generateSpeechWithBGM() {
     var btn = document.getElementById('swb_generate');
     btn.disabled = true;
+    disableSpeechWithBGMInputs(true);
     
     var startTime = Date.now();
     var timer = null;
@@ -664,6 +725,7 @@ async function generateSpeechWithBGM() {
         clearInterval(timer);
         showResult('swb', false, '请输入语音文本');
         btn.disabled = false;
+        disableSpeechWithBGMInputs(false);
         return;
     }
 
@@ -676,6 +738,7 @@ async function generateSpeechWithBGM() {
         clearInterval(timer);
         showResult('swb', false, '请上传说话人参考音频');
         btn.disabled = false;
+        disableSpeechWithBGMInputs(false);
         return;
     }
 
@@ -717,9 +780,14 @@ async function generateSpeechWithBGM() {
     }
 
     btn.disabled = false;
+    disableSpeechWithBGMInputs(false);
 }
 
 async function generateBGM() {
+    var btn = document.querySelector('#bgm .generate-btn');
+    btn.disabled = true;
+    disableBGMInputs(true);
+    
     var startTime = Date.now();
     var timer = null;
     var resultDiv = document.getElementById('bgm_result');
@@ -774,9 +842,16 @@ async function generateBGM() {
         clearInterval(timer);
         showResult('bgm', false, '错误: ' + e.message);
     }
+
+    btn.disabled = false;
+    disableBGMInputs(false);
 }
 
 async function generateTTA() {
+    var btn = document.querySelector('#tta .generate-btn');
+    btn.disabled = true;
+    disableTTAInputs(true);
+    
     var startTime = Date.now();
     var timer = null;
     var resultDiv = document.getElementById('tta_result');
@@ -793,6 +868,8 @@ async function generateTTA() {
     if (!text) {
         clearInterval(timer);
         showResult('tta', false, '请输入描述');
+        btn.disabled = false;
+        disableTTAInputs(false);
         return;
     }
 
@@ -824,6 +901,9 @@ async function generateTTA() {
         clearInterval(timer);
         showResult('tta', false, '错误: ' + e.message);
     }
+
+    btn.disabled = false;
+    disableTTAInputs(false);
 }
 
 loadIPData();

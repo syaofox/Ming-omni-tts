@@ -545,6 +545,17 @@ def create_webui(
             return "File not found", 404
         return send_file(filepath, mimetype="audio/wav")
 
+    @app.route("/uploaded/<filename>")
+    def serve_uploaded_audio(filename):
+        filepath = os.path.join(UPLOAD_DIR, filename)
+        if not os.path.exists(filepath):
+            return "File not found", 404
+        ext = os.path.splitext(filename)[1]
+        mimetype = (
+            f"audio/{ext[1:]}" if ext[1:] in ["wav", "mp3", "ogg"] else "audio/wav"
+        )
+        return send_file(filepath, mimetype=mimetype)
+
     @app.route("/config_audio/<config_name>")
     def serve_config_audio(config_name):
         config_path = os.path.join(CONFIG_DIR, config_name)

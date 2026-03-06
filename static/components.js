@@ -64,6 +64,17 @@ class AudioUploader extends HTMLElement {
         }
     }
 
+    setDisabled(disabled) {
+        if (this._fileInput) {
+            this._fileInput.disabled = disabled;
+        }
+        var dropZone = this.shadowRoot.getElementById('drop-zone');
+        if (dropZone) {
+            dropZone.style.opacity = disabled ? '0.5' : '1';
+            dropZone.style.pointerEvents = disabled ? 'none' : 'auto';
+        }
+    }
+
     setAudioPath(audioPath, configName) {
         var self = this;
         var displayEl = this.shadowRoot.getElementById('audio-display');
@@ -79,7 +90,15 @@ class AudioUploader extends HTMLElement {
         }
 
         if (audioPath) {
-            var url = configName ? '/config_audio/' + encodeURIComponent(configName) : audioPath;
+            var url;
+            if (configName) {
+                url = '/config_audio/' + encodeURIComponent(configName);
+            } else if (audioPath.startsWith('/tmp/') || audioPath.startsWith('/var/folders/') || audioPath.includes('/temp/')) {
+                var filename = audioPath.split('/').pop();
+                url = '/uploaded/' + encodeURIComponent(filename);
+            } else {
+                url = audioPath;
+            }
             displayEl.innerHTML = '<div class="audio-container"><audio controls src="' + url + '"></audio><button class="clear-btn" id="clear-btn">✕</button></div><p style="font-size:12px;color:#666;">已加载参考音频</p>';
             dropZone.style.display = 'none';
             

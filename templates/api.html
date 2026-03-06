@@ -47,7 +47,7 @@
             
             <div class="form-group">
                 <label>端口：</label>
-                <input type="number" id="config_port" placeholder="7861" value="7861">
+                <input type="number" id="config_port" placeholder="7860" value="7860">
             </div>
         </div>
         
@@ -105,7 +105,7 @@
         function generateConfig() {
             var btn = document.getElementById('generate_config');
             var ip = document.getElementById('config_ip').value || '10.10.10.10';
-            var port = document.getElementById('config_port').value || 7861;
+            var port = document.getElementById('config_port').value || 7860;
             
             btn.disabled = true;
             btn.textContent = '生成中...';

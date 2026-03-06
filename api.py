@@ -151,7 +151,7 @@ def create_api(model):
     def generate_config():
         data = request.get_json() or {}
         ip = data.get("ip", "10.10.10.10")
-        port = data.get("port", 7861)
+        port = data.get("port", 7860)
 
         try:
             output_path = os.path.join(current_dir, "saved_configs", "httpTts.json")

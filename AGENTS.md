@@ -33,6 +33,23 @@ docker compose -f docker-compose.dev.yml run --rm -p 7860:7860 ming-omni-tts pyt
 docker compose -f docker-compose.dev.yml run --rm -p 7860:7860 ming-omni-tts python api.py
 ```
 
+### 运行单个测试用例
+```bash
+# 在 test.py 中注释掉不需要的测试，只保留要运行的测试
+# 例如只运行 TTS 测试:
+docker compose -f docker-compose.dev.yml run --rm ming-omni-tts python -c "
+import torch
+from modeling_bailingmm import BailingMMNativeForConditionalGeneration
+from spkemb_extractor import SpkembExtractor
+
+model = BailingMMNativeForConditionalGeneration.from_pretrained(
+    './models/Ming-omni-tts-0.5B', torch_dtype=torch.bfloat16
+).eval().to('cuda:0')
+
+# 运行单个测试...
+"
+```
+
 ### 本地开发（仅用于语法检查）
 ```bash
 # 语法检查单个 Python 文件
@@ -96,6 +113,22 @@ except Exception as e:
 - HTML/CSS/JS 放在 `templates/` 目录
 - 使用 `render_template()`，禁止使用 `render_template_string()`
 
+### 导入规范
+1. 导入顺序：标准库 → 第三方库 → 本地模块
+2. 每组内按字母排序
+3. 使用 `sys.path` 后相对导入本地模块
+4. 禁止导入整个 webui 模块（会加载 Flask 应用），应直接导入所需类
+
+```python
+# 正确
+from webui import MingAudio
+from modeling_bailingmm import BailingMMNativeForConditionalGeneration
+from spkemb_extractor import SpkembExtractor
+
+# 错误 - 会加载整个 webui
+# from cookbooks.test import MingAudio
+```
+
 ---
 
 ## 项目结构
@@ -123,17 +156,6 @@ Ming-omni-tts/
 | TTS | "Please generate speech based on the following description.\n" |
 | TTA | "Please generate audio events based on given text.\n" |
 | BGM | "Please generate music based on the following description.\n" |
-
----
-
-## 导入规范
-```python
-# 正确 - 仅导入 MingAudio 类
-from webui import MingAudio
-
-# 错误 - 会加载整个 webui 包括 Flask 应用
-# from cookbooks.test import MingAudio
-```
 
 ---
 

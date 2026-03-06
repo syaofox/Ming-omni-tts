@@ -189,25 +189,35 @@
             <div class="row">
                 <div class="col">
                     <div class="form-group">
+                        <label>模式选择：</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="podcast_mode" value="saved_configs" checked> 使用已保存配置</label>
+                            <label><input type="radio" name="podcast_mode" value="manual_upload"> 手动上传参考音频</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <label>对话脚本：</label>
-                        <textarea id="pod_text" rows="6" placeholder="使用 'speaker_1:' 和 'speaker_2:' 等来区分说话人。例如：
-speaker_1: 你好！
-speaker_2: 你好！"></textarea>
+                        <textarea id="pod_text" rows="6" placeholder="使用 '说话人名字:' 来区分不同说话人。例如：
+角色1: 你好！
+角色2: 你好！
+角色1: 今天天气不错。"></textarea>
                     </div>
-                    <div class="form-group">
-                        <label>参考音频（按speaker_1, speaker_2, ...顺序）：</label>
-                    </div>
-                    <div class="form-group">
-                        <label>Speaker 1 参考音频：</label>
-                        <audio-uploader id="pod_audio_1" label="" hidden-id="pod_audio_path_1"></audio-uploader>
-                    </div>
-                    <div class="form-group">
-                        <label>Speaker 2 参考音频：</label>
-                        <audio-uploader id="pod_audio_2" label="" hidden-id="pod_audio_path_2"></audio-uploader>
-                    </div>
-                    <div class="form-group">
-                        <label>Speaker 3 参考音频（可选）：</label>
-                        <audio-uploader id="pod_audio_3" label="" hidden-id="pod_audio_path_3"></audio-uploader>
+                    <div id="pod_audio_upload_section" style="display: none;">
+                        <div class="form-group">
+                            <label>参考音频（按speaker_1, speaker_2, ...顺序）：</label>
+                        </div>
+                        <div class="form-group">
+                            <label>Speaker 1 参考音频：</label>
+                            <audio-uploader id="pod_audio_1" label="" hidden-id="pod_audio_path_1"></audio-uploader>
+                        </div>
+                        <div class="form-group">
+                            <label>Speaker 2 参考音频：</label>
+                            <audio-uploader id="pod_audio_2" label="" hidden-id="pod_audio_path_2"></audio-uploader>
+                        </div>
+                        <div class="form-group">
+                            <label>Speaker 3 参考音频（可选）：</label>
+                            <audio-uploader id="pod_audio_3" label="" hidden-id="pod_audio_path_3"></audio-uploader>
+                        </div>
                     </div>
                     <button id="pod_generate" onclick="generatePodcast()" class="generate-btn">生成对话</button>
                     <div id="pod_result"></div>

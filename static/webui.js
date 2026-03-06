@@ -375,6 +375,26 @@ function switchTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
     document.querySelector('.tab[onclick="switchTab(\'' + tabId + '\')"]').classList.add('active');
     document.getElementById(tabId).classList.add('active');
+    
+    if (tabId === 'podcast') {
+        initPodcastMode();
+    }
+}
+
+function initPodcastMode() {
+    var modeRadio = document.querySelector('input[name="podcast_mode"]:checked');
+    var useSavedConfigs = modeRadio && modeRadio.value === 'saved_configs';
+    var audioSection = document.getElementById('pod_audio_upload_section');
+    if (audioSection) {
+        audioSection.style.display = useSavedConfigs ? 'none' : 'block';
+    }
+    var textPlaceholder = useSavedConfigs 
+        ? "使用 '说话人名字:' 来区分不同说话人。例如：\n角色1: 你好！\n角色2: 你好！\n角色1: 今天天气不错。"
+        : "使用 'speaker_1:' 和 'speaker_2:' 等来区分说话人。例如：\nspeaker_1: 你好！\nspeaker_2: 你好！";
+    var textArea = document.getElementById('pod_text');
+    if (textArea) {
+        textArea.placeholder = textPlaceholder;
+    }
 }
 
 function disablePodcastInputs(disabled) {
@@ -664,32 +684,38 @@ async function generatePodcast() {
         return;
     }
 
-    var promptAudios = [];
-    for (var i = 1; i <= 3; i++) {
-        var uploader = document.getElementById('pod_audio_' + i);
-        var audio = await uploadAudioIfNeeded('pod_audio_' + i);
-        if (!audio && uploader) {
-            audio = uploader.getValue();
-        }
-        if (audio) {
-            promptAudios.push(audio);
-        }
-    }
-
-    if (promptAudios.length < 2) {
-        clearInterval(timer);
-        showResult('pod', false, '请至少上传两个说话人的参考音频');
-        btn.disabled = false;
-        disablePodcastInputs(false);
-        return;
-    }
+    var modeRadio = document.querySelector('input[name="podcast_mode"]:checked');
+    var useSavedConfigs = modeRadio && modeRadio.value === 'saved_configs';
 
     var data = {
         task_type: 'Podcast',
         text: text,
-        prompt_audio: promptAudios,
         seed: parseInt(document.getElementById('settings_seed').value) || null,
+        use_saved_configs: useSavedConfigs,
     };
+
+    if (!useSavedConfigs) {
+        var promptAudios = [];
+        for (var i = 1; i <= 3; i++) {
+            var uploader = document.getElementById('pod_audio_' + i);
+            var audio = await uploadAudioIfNeeded('pod_audio_' + i);
+            if (!audio && uploader) {
+                audio = uploader.getValue();
+            }
+            if (audio) {
+                promptAudios.push(audio);
+            }
+        }
+
+        if (promptAudios.length < 2) {
+            clearInterval(timer);
+            showResult('pod', false, '请至少上传两个说话人的参考音频');
+            btn.disabled = false;
+            disablePodcastInputs(false);
+            return;
+        }
+        data.prompt_audio = promptAudios;
+    }
 
     try {
         var resp = await fetch('/generate', {
@@ -919,6 +945,10 @@ async function generateTTA() {
 
 loadIPData();
 loadConfigList();
+
+document.querySelectorAll('input[name="podcast_mode"]').forEach(function(radio) {
+    radio.addEventListener('change', initPodcastMode);
+});
 
 function openSettings() {
     document.getElementById('settingsModal').style.display = 'block';

@@ -59,27 +59,97 @@ def preprocess_text(text):
 def parse_podcast_dialogues(text):
     """
     解析对话文本，返回按原文顺序的句子列表
-    每个元素: (speaker_index, sentence_text)
-    speaker_index 从 1 开始 (speaker_1 -> 0, speaker_2 -> 1, ...)
+    支持两种格式：
+    - 新格式：名字: 说话内容 (如 "角色1: 你你好")
+    - 旧格式：speaker_N: 说话内容 (如 "speaker_1: 你好")
+
+    返回：
+    - 新模式：[(speaker_name, sentence_text), ...]  speaker_name 为配置名
+    - 旧模式：[(speaker_index, sentence_text), ...] speaker_index 为 0-based 数字
     """
     import re
 
     sentences = []
     lines = text.replace("\r\n", "\n").replace("\r", "\n").strip().split("\n")
 
+    mode = None  # "new" or "old"
+
     for line in lines:
         line = line.strip()
         if not line:
             continue
-        # 匹配 speaker_X: 格式
-        match = re.match(r"^speaker_(\d+):\s*(.+)$", line, re.IGNORECASE)
-        if match:
-            speaker_index = int(match.group(1)) - 1  # 转换为 0-based
-            sentence_text = match.group(2).strip()
+
+        # 尝试匹配新格式：名字: 说话内容
+        match_new = re.match(r"^([^:]+):\s*(.+)$", line)
+        if match_new:
+            speaker_name = match_new.group(1).strip()
+            sentence_text = match_new.group(2).strip()
+            # 排除旧格式匹配
+            if not re.match(r"^speaker_\d+$", speaker_name, re.IGNORECASE):
+                if sentence_text:
+                    if mode is None:
+                        mode = "new"
+                    elif mode != "new":
+                        return []
+                    sentences.append((speaker_name, sentence_text))
+                continue
+
+        # 匹配旧格式 speaker_X:
+        match_old = re.match(r"^speaker_(\d+):\s*(.+)$", line, re.IGNORECASE)
+        if match_old:
+            speaker_index = int(match_old.group(1)) - 1
+            sentence_text = match_old.group(2).strip()
             if sentence_text:
+                if mode is None:
+                    mode = "old"
+                elif mode != "old":
+                    return []
                 sentences.append((speaker_index, sentence_text))
 
     return sentences
+
+
+def load_saved_configs_for_podcast():
+    """
+    加载 saved_configs 目录下所有有效的说话人配置
+    返回：{config_name: {"config": config_data, "audio_path": audio_path}}
+    """
+    import os
+
+    config_dir = "./saved_configs"
+    if not os.path.exists(config_dir):
+        return {}
+
+    configs = {}
+    for item in os.listdir(config_dir):
+        item_path = os.path.join(config_dir, item)
+        if not os.path.isdir(item_path):
+            continue
+
+        config_file = os.path.join(item_path, "config.json")
+        if not os.path.exists(config_file):
+            continue
+
+        try:
+            with open(config_file, "r", encoding="utf-8") as f:
+                config_data = json.load(f)
+        except Exception:
+            continue
+
+        prompt_audio = config_data.get("prompt_audio")
+        if not prompt_audio:
+            continue
+
+        audio_path = prompt_audio
+        if not os.path.isabs(audio_path):
+            audio_path = os.path.join(config_dir, item, prompt_audio)
+
+        if not os.path.exists(audio_path):
+            continue
+
+        configs[item] = {"config": config_data, "audio_path": audio_path}
+
+    return configs
 
 
 def generate_podcast(
@@ -92,9 +162,15 @@ def generate_podcast(
     temperature,
     output_path,
     seed,
+    use_saved_configs=False,
 ):
     """
     分句生成 Podcast 并合并
+
+    参数:
+        use_saved_configs: 是否使用已保存的配置模式
+            - True: 使用 saved_configs 目录下的配置，speaker_name 为配置名
+            - False: 使用手动上传的音频，speaker_index 为 0-based 数字
     """
     import re
     import torch
@@ -103,68 +179,148 @@ def generate_podcast(
     # 解析对话
     sentences = parse_podcast_dialogues(text)
     if not sentences:
-        return None, "无法解析对话文本，请使用 speaker_1:, speaker_2: 等格式"
-
-    # 按说话人分组句子
-    speaker_sentences = {}
-    for speaker_idx, sentence in sentences:
-        if speaker_idx not in speaker_sentences:
-            speaker_sentences[speaker_idx] = []
-        speaker_sentences[speaker_idx].append(sentence)
-
-    # 检查参考音频数量
-    num_speakers = len(speaker_sentences)
-    if num_speakers > len(prompt_audio_list):
         return (
             None,
-            f"对话中有 {num_speakers} 个说话人，但只提供了 {len(prompt_audio_list)} 个参考音频",
+            "无法解析对话文本，请使用 名字: 说话内容 或 speaker_1: 说话内容 格式",
         )
 
-    # 预处理每个说话人的参考音频
-    prompt_waveforms = []
-    spk_embs = []
+    # 确定解析结果的类型
+    first_key = sentences[0][0]
+    is_new_mode = isinstance(first_key, str) and not isinstance(first_key, int)
 
-    for i in range(num_speakers):
-        prompt_wav_path = prompt_audio_list[i]
-        waveform, sr = torchaudio.load(prompt_wav_path)
-        if waveform.shape[0] > 1:
-            waveform = waveform.mean(dim=0, keepdim=True)
-        if sr != model.sample_rate:
-            waveform = torchaudio.transforms.Resample(
-                orig_freq=sr, new_freq=model.sample_rate
+    if use_saved_configs and not is_new_mode:
+        return None, "使用已保存配置模式时，请使用 名字: 说话内容 格式"
+
+    if not use_saved_configs and is_new_mode:
+        return None, "使用手动上传音频模式时，请使用 speaker_1:, speaker_2: 等格式"
+
+    if is_new_mode:
+        # 新模式：使用 saved_configs
+        saved_configs = load_saved_configs_for_podcast()
+
+        speaker_names = set(s[0] for s in sentences)
+        for speaker_name in speaker_names:
+            if speaker_name not in saved_configs:
+                return (
+                    None,
+                    f"未找到说话人 '{speaker_name}' 的配置，请先在设置中保存该说话人",
+                )
+
+        # 按说话人分组句子
+        speaker_sentences = {}
+        for speaker_name, sentence in sentences:
+            if speaker_name not in speaker_sentences:
+                speaker_sentences[speaker_name] = []
+            speaker_sentences[speaker_name].append(sentence)
+
+        num_speakers = len(speaker_sentences)
+
+        # 预处理每个说话人的参考音频（复用 embedding）
+        spk_emb_cache = {}
+        audio_path_cache = {}
+
+        for speaker_name in speaker_sentences:
+            config_info = saved_configs[speaker_name]
+            audio_path = config_info["audio_path"]
+
+            waveform, sr = torchaudio.load(audio_path)
+            if waveform.shape[0] > 1:
+                waveform = waveform.mean(dim=0, keepdim=True)
+            if sr != model.sample_rate:
+                waveform = torchaudio.transforms.Resample(
+                    orig_freq=sr, new_freq=model.sample_rate
+                )(waveform)
+
+            waveform_16k = torchaudio.transforms.Resample(
+                orig_freq=model.sample_rate, new_freq=16000
             )(waveform)
-        prompt_waveforms.append(waveform)
+            spk_emb = model.spkemb_extractor(waveform_16k)
 
-        # 提取 speaker embedding
-        waveform_16k = torchaudio.transforms.Resample(
-            orig_freq=model.sample_rate, new_freq=16000
-        )(waveform)
-        spk_emb = model.spkemb_extractor(waveform_16k)
-        spk_embs.append(spk_emb)
+            spk_emb_cache[speaker_name] = spk_emb
+            audio_path_cache[speaker_name] = audio_path
 
-    # 生成每个说话人的句子
-    generated_waveforms = []
-    prompt = get_prompt_by_task_type("Podcast")
+        # 生成每个说话人的句子
+        generated_waveforms = []
+        prompt = get_prompt_by_task_type("Podcast")
 
-    for speaker_idx, sentence in sentences:
-        spk_emb = spk_embs[speaker_idx]
+        for speaker_name, sentence in sentences:
+            spk_emb = spk_emb_cache[speaker_name]
+            audio_path = audio_path_cache[speaker_name]
 
-        waveform = model.speech_generation(
-            prompt=prompt,
-            text=sentence,
-            use_spk_emb=True,
-            use_zero_spk_emb=False,
-            instruction=None,
-            prompt_wav_path=prompt_audio_list[speaker_idx],
-            prompt_text=None,
-            max_decode_steps=max_decode_steps,
-            cfg=cfg,
-            sigma=sigma,
-            temperature=temperature,
-            output_wav_path=None,
-            seed=seed,
-        )
-        generated_waveforms.append(waveform)
+            waveform = model.speech_generation(
+                prompt=prompt,
+                text=sentence,
+                use_spk_emb=True,
+                use_zero_spk_emb=False,
+                instruction=None,
+                prompt_wav_path=audio_path,
+                prompt_text=None,
+                max_decode_steps=max_decode_steps,
+                cfg=cfg,
+                sigma=sigma,
+                temperature=temperature,
+                output_wav_path=None,
+                seed=seed,
+            )
+            generated_waveforms.append(waveform)
+
+    else:
+        # 旧模式：使用手动上传的音频
+        speaker_sentences = {}
+        for speaker_idx, sentence in sentences:
+            if speaker_idx not in speaker_sentences:
+                speaker_sentences[speaker_idx] = []
+            speaker_sentences[speaker_idx].append(sentence)
+
+        num_speakers = len(speaker_sentences)
+        if num_speakers > len(prompt_audio_list):
+            return (
+                None,
+                f"对话中有 {num_speakers} 个说话人，但只提供了 {len(prompt_audio_list)} 个参考音频",
+            )
+
+        # 预处理每个说话人的参考音频
+        spk_embs = []
+
+        for i in range(num_speakers):
+            prompt_wav_path = prompt_audio_list[i]
+            waveform, sr = torchaudio.load(prompt_wav_path)
+            if waveform.shape[0] > 1:
+                waveform = waveform.mean(dim=0, keepdim=True)
+            if sr != model.sample_rate:
+                waveform = torchaudio.transforms.Resample(
+                    orig_freq=sr, new_freq=model.sample_rate
+                )(waveform)
+
+            waveform_16k = torchaudio.transforms.Resample(
+                orig_freq=model.sample_rate, new_freq=16000
+            )(waveform)
+            spk_emb = model.spkemb_extractor(waveform_16k)
+            spk_embs.append(spk_emb)
+
+        # 生成每个说话人的句子
+        generated_waveforms = []
+        prompt = get_prompt_by_task_type("Podcast")
+
+        for speaker_idx, sentence in sentences:
+            spk_emb = spk_embs[speaker_idx]
+
+            waveform = model.speech_generation(
+                prompt=prompt,
+                text=sentence,
+                use_spk_emb=True,
+                use_zero_spk_emb=False,
+                instruction=None,
+                prompt_wav_path=prompt_audio_list[speaker_idx],
+                prompt_text=None,
+                max_decode_steps=max_decode_steps,
+                cfg=cfg,
+                sigma=sigma,
+                temperature=temperature,
+                output_wav_path=None,
+                seed=seed,
+            )
+            generated_waveforms.append(waveform)
 
     # 合并所有音频
     final_waveform = torch.cat(generated_waveforms, dim=-1)
@@ -202,6 +358,7 @@ def generate_speech(
     seed=None,
     bgm=None,
     podcast_task=False,
+    use_saved_configs=False,
 ):
     if not prompt_text:
         prompt_text = None
@@ -277,6 +434,7 @@ def generate_speech(
                 temperature=temperature,
                 output_path=output_path,
                 seed=seed,
+                use_saved_configs=use_saved_configs,
             )
         except Exception as e:
             from loguru import logger

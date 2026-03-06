@@ -498,6 +498,7 @@ def create_webui(
 
         # Podcast 参数
         podcast_task = task_type == "Podcast"
+        use_saved_configs = data.get("use_saved_configs", False)
 
         from inference import generate_speech as _generate_speech
 
@@ -525,6 +526,7 @@ def create_webui(
             seed=seed,
             bgm=bgm,
             podcast_task=podcast_task,
+            use_saved_configs=use_saved_configs,
         )
 
         if result[0] is None:

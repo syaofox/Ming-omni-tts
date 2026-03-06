@@ -46,7 +46,7 @@ def create_api(model):
                 "["
                 + ",".join(
                     [
-                        f'{{"name": "{c["name"]}", "pinyin": "{get_pinyin(c["name"])}", "initials": "{get_pinyin_initials(c["name"])}"}}'
+                        f'{{"name": "{c["name"]}", "value": "{c["name"]}", "pinyin": "{get_pinyin(c["name"])}", "initials": "{get_pinyin_initials(c["name"])}"}}'
                         for c in config_list
                     ]
                 )

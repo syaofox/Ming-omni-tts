@@ -35,11 +35,14 @@
                 <div class="col">
                     <div class="form-group" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                         <label style="min-width: 50px;">配置：</label>
-                        <div class="search-select-container" style="position: relative; flex: 1; min-width: 200px;">
-                            <input type="text" id="instruct_config_search" placeholder="搜索已保存的配置..." autocomplete="off" style="margin-bottom: 5px;">
-                            <div id="instruct_config_dropdown" class="search-dropdown" style="display: none;"></div>
-                        </div>
-                        <input type="hidden" id="instruct_config_select">
+                        <search-select 
+                            id="instruct_config_select"
+                            placeholder="搜索已保存的配置..."
+                            hidden-id="instruct_config_hidden"
+                            style="flex: 1; min-width: 200px;"
+                            filter-fields="name,pinyin,initials"
+                            value-key="value">
+                        </search-select>
                         <input type="hidden" id="instruct_config_audio_path">
                         <button onclick="loadInstructConfig()" class="secondary" style="padding: 8px 16px; cursor: pointer;">加载</button>
                         <button onclick="showSaveInstructConfigModal()" class="secondary" style="padding: 8px 16px; cursor: pointer;">保存当前</button>
@@ -91,11 +94,11 @@
                     <!-- IP Controls -->
                     <div class="form-group instruct-detail" id="ip_controls" style="display:none;">
                         <label>人物选择 (IP)：</label>
-                        <div class="search-select-container" style="position: relative;">
-                            <input type="text" id="ip_search" placeholder="搜索内置人物..." autocomplete="off" style="margin-bottom: 5px;">
-                            <div id="ip_dropdown" class="search-dropdown" style="display: none;"></div>
-                        </div>
-                        <input type="hidden" id="instruct_ip">
+                        <search-select 
+                            id="instruct_ip_select"
+                            placeholder="搜索内置人物..."
+                            filter-fields="name,pinyin,initials">
+                        </search-select>
                     </div>
                     
                     <!-- Style Controls -->
@@ -138,11 +141,14 @@
                 <div class="col">
                     <div class="form-group" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                         <label style="min-width: 50px;">配置：</label>
-                        <div class="search-select-container" style="position: relative; flex: 1; min-width: 200px;">
-                            <input type="text" id="zs_config_search" placeholder="搜索已保存的配置..." autocomplete="off" style="margin-bottom: 5px;">
-                            <div id="zs_config_dropdown" class="search-dropdown" style="display: none;"></div>
-                        </div>
-                        <input type="hidden" id="zs_config_select">
+                        <search-select 
+                            id="zs_config_select"
+                            placeholder="搜索已保存的配置..."
+                            hidden-id="zs_config_hidden"
+                            style="flex: 1; min-width: 200px;"
+                            filter-fields="name,pinyin,initials"
+                            value-key="value">
+                        </search-select>
                         <input type="hidden" id="zs_config_audio_path">
                         <button onclick="loadZeroShotConfig()" class="secondary" style="padding: 8px 16px; cursor: pointer;">加载</button>
                         <button onclick="showSaveZeroShotConfigModal()" class="secondary" style="padding: 8px 16px; cursor: pointer;">保存当前</button>
@@ -165,11 +171,11 @@
                     </div>
                     <div class="form-group">
                         <label>内置人物 (可选)：</label>
-                        <div class="search-select-container" style="position: relative;">
-                            <input type="text" id="zs_ip_search" placeholder="搜索内置人物..." autocomplete="off" style="margin-bottom: 5px;">
-                            <div id="zs_ip_dropdown" class="search-dropdown" style="display: none;"></div>
-                        </div>
-                        <input type="hidden" id="zs_instruct_ip">
+                        <search-select 
+                            id="zs_ip_select"
+                            placeholder="搜索内置人物..."
+                            filter-fields="name,pinyin,initials">
+                        </search-select>
                     </div>
                     <button id="zs_generate" onclick="generateZeroShotTTS()" class="generate-btn">克隆音色并生成语音</button>
                     <div id="zs_result"></div>

@@ -19,13 +19,14 @@
         
         <div class="form-group">
             <label>音色：</label>
-            <div class="search-select-container">
-                <input type="text" id="speaker_search" placeholder="搜索音色..." autocomplete="off">
-                <div id="speaker_dropdown" class="search-dropdown" style="display: none;"></div>
-            </div>
-            <select id="speaker" style="display: none;">
-                <option value="">选择音色...</option>
-            </select>
+            <search-select 
+                id="speaker_select"
+                placeholder="搜索音色..."
+                hidden-id="speaker"
+                data='{{ config_list | tojson }}'
+                filter-fields="name,pinyin,initials"
+                value-key="value">
+            </search-select>
         </div>
         
         <button id="generate" onclick="generate()">生成语音</button>
@@ -39,91 +40,7 @@
     </div>
 
     <script>
-        var configList = {{ config_list | safe }};
-        var defaultSpeaker = "{{ default_speaker }}";
-        
-        function initSpeakerSelect() {
-            var select = document.getElementById('speaker');
-            select.innerHTML = '<option value="">选择音色...</option>';
-            configList.forEach(function(c) {
-                var option = document.createElement('option');
-                option.value = c.name;
-                option.textContent = c.name;
-                if (c.name === defaultSpeaker) {
-                    option.selected = true;
-                }
-                select.appendChild(option);
-            });
-        }
-        
-        function showSpeakerDropdown(filter) {
-            var dropdown = document.getElementById('speaker_dropdown');
-            var input = document.getElementById('speaker_search');
-            dropdown.innerHTML = '';
-            dropdown.style.display = 'block';
-            
-            var filterLower = filter.toLowerCase().trim();
-            var filterNoSpace = filterLower.replace(/\s+/g, '');
-            
-            var matched = configList.filter(function(c) {
-                var nameLower = c.name.toLowerCase();
-                var pinyinLower = (c.pinyin || '').toLowerCase();
-                var initialsLower = (c.initials || '').toLowerCase().replace(/\s+/g, '');
-                
-                return nameLower.includes(filterLower) ||
-                       pinyinLower.includes(filterLower) ||
-                       initialsLower.includes(filterNoSpace);
-            }).map(function(c) { return c.name; });
-            
-            if (matched.length === 0) {
-                var noResult = document.createElement('div');
-                noResult.className = 'no-result';
-                noResult.textContent = '无匹配结果';
-                dropdown.appendChild(noResult);
-                return;
-            }
-            
-            matched.forEach(function(name) {
-                var div = document.createElement('div');
-                div.textContent = name;
-                div.onclick = function(e) {
-                    e.stopPropagation();
-                    input.value = name;
-                    dropdown.style.display = 'none';
-                    document.getElementById('speaker').value = name;
-                };
-                dropdown.appendChild(div);
-            });
-        }
-        
-        function hideSpeakerDropdown() {
-            document.getElementById('speaker_dropdown').style.display = 'none';
-        }
-        
-        document.getElementById('speaker_search').addEventListener('input', function() {
-            var value = this.value;
-            if (!value) {
-                document.getElementById('speaker').value = '';
-            }
-            if (value) {
-                showSpeakerDropdown(value);
-            } else {
-                showSpeakerDropdown('');
-            }
-        });
-        
-        document.getElementById('speaker_search').addEventListener('focus', function() {
-            showSpeakerDropdown(this.value);
-        });
-        
-        document.addEventListener('click', function(e) {
-            var container = e.target.closest('.search-select-container');
-            if (!container) {
-                hideSpeakerDropdown();
-            }
-        });
-        
-        async function generate() {
+        function generate() {
             var btn = document.getElementById('generate');
             btn.disabled = true;
             btn.textContent = '生成中...';
@@ -132,7 +49,7 @@
             var speaker = document.getElementById('speaker').value;
             
             if (!text) {
-                showResult('result', false, '请输入文本');
+                showResultCommon('result', false, '请输入文本');
                 btn.disabled = false;
                 btn.textContent = '生成语音';
                 return;
@@ -140,27 +57,26 @@
             
             var url = '/?text=' + encodeURIComponent(text) + '&speaker=' + encodeURIComponent(speaker);
             
-            try {
-                var resp = await fetch(url);
+            fetch(url).then(function(resp) {
                 var contentType = resp.headers.get('content-type');
                 
                 if (contentType && contentType.indexOf('audio') !== -1) {
-                    var blob = await resp.blob();
-                    var url = URL.createObjectURL(blob);
-                    showResult('result', true, '生成成功', url);
+                    return resp.blob().then(function(blob) {
+                        var url = URL.createObjectURL(blob);
+                        showResultCommon('result', true, '生成成功', url);
+                    });
                 } else {
-                    var text = await resp.text();
-                    showResult('result', false, text);
+                    return resp.text().then(function(text) {
+                        showResultCommon('result', false, text);
+                    });
                 }
-            } catch (e) {
-                showResult('result', false, '错误: ' + e.message);
-            }
-            
-            btn.disabled = false;
-            btn.textContent = '生成语音';
+            }).catch(function(e) {
+                showResultCommon('result', false, '错误: ' + e.message);
+            }).then(function() {
+                btn.disabled = false;
+                btn.textContent = '生成语音';
+            });
         }
-        
-        initSpeakerSelect();
     </script>
 </body>
 </html>

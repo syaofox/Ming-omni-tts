@@ -1,12 +1,12 @@
 var ipData = {};
 var configList = [];
+var ipList = [];
 
 async function loadIPData() {
     try {
         var resp = await fetch('/ip_data');
         ipData = await resp.json();
         initIPSelect();
-        initZSIPSelect();
     } catch (e) {
         console.error('Failed to load IP data:', e);
     }
@@ -23,9 +23,6 @@ async function loadConfigList() {
 }
 
 function updateConfigDropdowns() {
-    var instructSelect = document.getElementById('instruct_config_select');
-    var zsSelect = document.getElementById('zs_config_select');
-    
     var instructConfigs = configList.filter(function(c) {
         return c.task_type === 'Instruct TTS';
     });
@@ -34,81 +31,42 @@ function updateConfigDropdowns() {
         return c.task_type === 'Zero-shot TTS';
     });
     
-    window.instructConfigs = instructConfigs;
-    window.zeroShotConfigs = zeroShotConfigs;
-}
-
-function showConfigDropdown(inputId, dropdownId, hiddenId, configs) {
-    var dropdown = document.getElementById(dropdownId);
-    var input = document.getElementById(inputId);
-    dropdown.innerHTML = '';
-    dropdown.style.display = 'block';
+    var instructSelect = document.getElementById('instruct_config_select');
+    var zsSelect = document.getElementById('zs_config_select');
     
-    var filter = input.value || '';
-    var filterLower = filter.toLowerCase().trim();
-    var filterNoSpace = filterLower.replace(/\s+/g, '');
-    
-    var matched = configs.filter(function(c) {
-        var nameLower = c.name.toLowerCase();
-        var pinyinLower = (c.pinyin || '').toLowerCase();
-        var initialsLower = (c.initials || '').toLowerCase();
-        
-        return nameLower.includes(filterLower) ||
-               pinyinLower.includes(filterLower) ||
-               initialsLower.includes(filterNoSpace);
-    });
-    
-    if (matched.length === 0) {
-        var noResult = document.createElement('div');
-        noResult.className = 'no-result';
-        noResult.textContent = '无匹配结果';
-        dropdown.appendChild(noResult);
-        return;
+    if (instructSelect && instructSelect.setData) {
+        instructSelect.setData(instructConfigs.map(function(c) {
+            return { name: c.name + ' (' + (c.pinyin || '') + ')', value: c.name };
+        }));
     }
     
-    matched.forEach(function(c) {
-        var div = document.createElement('div');
-        div.textContent = c.name + ' (' + (c.pinyin || '') + ')';
-        div.onclick = function(e) {
-            e.stopPropagation();
-            input.value = c.name;
-            dropdown.style.display = 'none';
-            document.getElementById(hiddenId).value = c.name;
-        };
-        dropdown.appendChild(div);
-    });
-}
-
-function hideConfigDropdown() {
-    document.getElementById('instruct_config_dropdown').style.display = 'none';
-    document.getElementById('zs_config_dropdown').style.display = 'none';
-}
-
-document.getElementById('instruct_config_search').addEventListener('input', function() {
-    showConfigDropdown('instruct_config_search', 'instruct_config_dropdown', 'instruct_config_select', window.instructConfigs || []);
-});
-
-document.getElementById('instruct_config_search').addEventListener('focus', function() {
-    showConfigDropdown('instruct_config_search', 'instruct_config_dropdown', 'instruct_config_select', window.instructConfigs || []);
-});
-
-document.getElementById('zs_config_search').addEventListener('input', function() {
-    showConfigDropdown('zs_config_search', 'zs_config_dropdown', 'zs_config_select', window.zeroShotConfigs || []);
-});
-
-document.getElementById('zs_config_search').addEventListener('focus', function() {
-    showConfigDropdown('zs_config_search', 'zs_config_dropdown', 'zs_config_select', window.zeroShotConfigs || []);
-});
-
-document.addEventListener('click', function(e) {
-    var container = e.target.closest('.search-select-container');
-    if (!container) {
-        hideConfigDropdown();
+    if (zsSelect && zsSelect.setData) {
+        zsSelect.setData(zeroShotConfigs.map(function(c) {
+            return { name: c.name + ' (' + (c.pinyin || '') + ')', value: c.name };
+        }));
     }
-});
+}
+
+function initIPSelect() {
+    ipList = Object.keys(ipData).sort().map(function(ip) {
+        return { name: ip, value: ip, pinyin: (ipData[ip] || {}).pinyin, initials: (ipData[ip] || {}).initials };
+    });
+    
+    var instructIpSelect = document.getElementById('instruct_ip_select');
+    var zsIpSelect = document.getElementById('zs_ip_select');
+    
+    if (instructIpSelect && instructIpSelect.setData) {
+        instructIpSelect.setData(ipList);
+    }
+    
+    if (zsIpSelect && zsIpSelect.setData) {
+        zsIpSelect.setData(ipList);
+    }
+}
 
 async function loadInstructConfig() {
-    var configName = document.getElementById('instruct_config_select').value;
+    var select = document.getElementById('instruct_config_select');
+    var configName = select ? select.getValue() : null;
     if (!configName) {
         alert('请选择要加载的配置');
         return;
@@ -139,8 +97,8 @@ async function loadInstructConfig() {
                 document.getElementById('instruct_dialect').value = data.dialect;
             }
             if (data.ip) {
-                document.getElementById('ip_search').value = data.ip;
-                document.getElementById('instruct_ip').value = data.ip;
+                var ipSelect = document.getElementById('instruct_ip_select');
+                if (ipSelect && ipSelect.setValue) ipSelect.setValue(data.ip);
             }
             if (data.style) {
                 document.getElementById('instruct_style').value = data.style;
@@ -167,7 +125,8 @@ async function loadInstructConfig() {
 }
 
 async function loadZeroShotConfig() {
-    var configName = document.getElementById('zs_config_select').value;
+    var select = document.getElementById('zs_config_select');
+    var configName = select ? select.getValue() : null;
     if (!configName) {
         showConfigMessage('zs_config_msg', '请选择要加载的配置', true);
         return;
@@ -188,8 +147,8 @@ async function loadZeroShotConfig() {
                 clearConfigAudio('zs_audio_uploader');
             }
             if (data.ip) {
-                document.getElementById('zs_ip_search').value = data.ip;
-                document.getElementById('zs_instruct_ip').value = data.ip;
+                var ipSelect = document.getElementById('zs_ip_select');
+                if (ipSelect && ipSelect.setValue) ipSelect.setValue(data.ip);
             }
             if (data.prompt_text) {
                 document.getElementById('zs_prompt_text').value = data.prompt_text;
@@ -220,11 +179,10 @@ function showConfigMessage(msgId, message, isError) {
 }
 
 function showSaveInstructConfigModal() {
-    console.log('showSaveInstructConfigModal called');
-    var configName = document.getElementById('instruct_config_search').value;
-    console.log('configName from search input:', configName);
+    var select = document.getElementById('instruct_config_select');
+    var configName = select ? select.getValue() : null;
     if (!configName || !configName.trim()) {
-        showConfigMessage('instruct_config_msg', '请在搜索框输入配置名称', true);
+        showConfigMessage('instruct_config_msg', '请先选择或输入配置名称', true);
         return;
     }
     saveInstructConfig(configName.trim());
@@ -234,19 +192,13 @@ async function saveInstructConfig(configName) {
     var instructType = document.getElementById('instruct_type').value;
     var promptAudio = null;
     
-    console.log('saveInstructConfig called, instructType:', instructType);
-    
     if (instructType !== 'ip' && instructType !== 'style') {
         var uploader = document.getElementById('instruct_audio_uploader');
         promptAudio = await uploadAudioIfNeeded('instruct_audio_uploader');
-        console.log('Uploaded new audio:', promptAudio);
         if (!promptAudio) {
             promptAudio = uploader ? uploader.getValue() : null;
-            console.log('Saved audio path from uploader:', promptAudio);
         }
     }
-    
-    console.log('Final promptAudio to save:', promptAudio);
 
     var emotion = '无';
     var dialect = '无';
@@ -261,7 +213,7 @@ async function saveInstructConfig(configName) {
     } else if (instructType === 'dialect') {
         dialect = document.getElementById('instruct_dialect').value;
     } else if (instructType === 'ip') {
-        ip = document.getElementById('instruct_ip').value;
+        ip = document.getElementById('instruct_ip_select').getValue();
     } else if (instructType === 'style') {
         style = document.getElementById('instruct_style').value;
     } else if (instructType === 'basic') {
@@ -287,8 +239,6 @@ async function saveInstructConfig(configName) {
         volume: volume,
     };
 
-    console.log('Saving config data:', JSON.stringify(data, null, 2));
-
     try {
         var resp = await fetch('/save_config', {
             method: 'POST',
@@ -308,26 +258,23 @@ async function saveInstructConfig(configName) {
 }
 
 function showSaveZeroShotConfigModal() {
-    console.log('showSaveZeroShotConfigModal called');
-    var configName = document.getElementById('zs_config_search').value;
-    console.log('zs configName:', configName);
+    var select = document.getElementById('zs_config_select');
+    var configName = select ? select.getValue() : null;
     if (!configName || !configName.trim()) {
-        showConfigMessage('zs_config_msg', '请在搜索框输入配置名称', true);
+        showConfigMessage('zs_config_msg', '请先选择或输入配置名称', true);
         return;
     }
     saveZeroShotConfig(configName.trim());
 }
 
 async function saveZeroShotConfig(configName) {
-    console.log('saveZeroShotConfig called');
     var promptAudio = await uploadAudioIfNeeded('zs_audio_uploader');
     if (!promptAudio) {
         var uploader = document.getElementById('zs_audio_uploader');
         promptAudio = uploader ? uploader.getValue() : null;
-        console.log('zs audio uploader value:', promptAudio);
     }
 
-    var ip = document.getElementById('zs_instruct_ip').value;
+    var ip = document.getElementById('zs_ip_select').getValue();
     var promptText = document.getElementById('zs_prompt_text').value || null;
 
     var data = {
@@ -337,8 +284,6 @@ async function saveZeroShotConfig(configName) {
         prompt_text: promptText,
         ip: ip || null,
     };
-
-    console.log('Saving Zero-shot config:', JSON.stringify(data, null, 2));
 
     try {
         var resp = await fetch('/save_config', {
@@ -357,92 +302,6 @@ async function saveZeroShotConfig(configName) {
         showConfigMessage('zs_config_msg', '保存失败: ' + e.message, true);
     }
 }
-
-var ipList = [];
-
-function initIPSelect() {
-    ipList = Object.keys(ipData).sort();
-}
-
-function initZSIPSelect() {
-    // Zero-shot IP uses same data
-}
-
-function showIPDropdown(inputId, dropdownId, hiddenId) {
-    var dropdown = document.getElementById(dropdownId);
-    var input = document.getElementById(inputId);
-    dropdown.innerHTML = '';
-    dropdown.style.display = 'block';
-    
-    var filter = input.value || '';
-    var filterLower = filter.toLowerCase().trim();
-    var filterNoSpace = filterLower.replace(/\s+/g, '');
-    
-    var matched = ipList.filter(function(ip) {
-        var data = ipData[ip] || {};
-        var nameLower = ip.toLowerCase();
-        var pinyinLower = (data.pinyin || '').toLowerCase();
-        var initialsLower = (data.initials || '').toLowerCase();
-        
-        return nameLower.includes(filterLower) ||
-               pinyinLower.includes(filterLower) ||
-               initialsLower.includes(filterNoSpace);
-    });
-    
-    if (matched.length === 0) {
-        var noResult = document.createElement('div');
-        noResult.className = 'no-result';
-        noResult.textContent = '无匹配结果';
-        dropdown.appendChild(noResult);
-        return;
-    }
-    
-    matched.forEach(function(ip) {
-        var div = document.createElement('div');
-        div.textContent = ip;
-        div.onclick = function(e) {
-            e.stopPropagation();
-            input.value = ip;
-            dropdown.style.display = 'none';
-            document.getElementById(hiddenId).value = ip;
-        };
-        dropdown.appendChild(div);
-    });
-}
-
-function hideIPDropdown() {
-    document.getElementById('ip_dropdown').style.display = 'none';
-    document.getElementById('zs_ip_dropdown').style.display = 'none';
-}
-
-document.getElementById('ip_search').addEventListener('input', function() {
-    if (!this.value) {
-        document.getElementById('instruct_ip').value = '';
-    }
-    showIPDropdown('ip_search', 'ip_dropdown', 'instruct_ip');
-});
-
-document.getElementById('ip_search').addEventListener('focus', function() {
-    showIPDropdown('ip_search', 'ip_dropdown', 'instruct_ip');
-});
-
-document.getElementById('zs_ip_search').addEventListener('input', function() {
-    if (!this.value) {
-        document.getElementById('zs_instruct_ip').value = '';
-    }
-    showIPDropdown('zs_ip_search', 'zs_ip_dropdown', 'zs_instruct_ip');
-});
-
-document.getElementById('zs_ip_search').addEventListener('focus', function() {
-    showIPDropdown('zs_ip_search', 'zs_ip_dropdown', 'zs_instruct_ip');
-});
-
-document.addEventListener('click', function(e) {
-    var container = e.target.closest('.search-select-container');
-    if (!container) {
-        hideIPDropdown();
-    }
-});
 
 function updateInstructVisibility() {
     var instructType = document.getElementById('instruct_type').value;
@@ -468,7 +327,6 @@ function updateInstructVisibility() {
 }
 
 function displayConfigAudio(audioPath, uploaderId) {
-    console.log('displayConfigAudio called:', audioPath, uploaderId);
     var uploader = uploaderId ? document.getElementById(uploaderId) : null;
     if (!uploader || !uploader.setAudioPath) {
         console.error('Audio uploader element not found or invalid:', uploaderId);
@@ -476,9 +334,7 @@ function displayConfigAudio(audioPath, uploaderId) {
     }
     if (audioPath) {
         var match = audioPath.match(/saved_configs[/\\]([^/\\]+)/);
-        console.log('Regex match:', match);
         var configName = match ? match[1] : null;
-        console.log('Extracted configName:', configName);
         uploader.setAudioPath(audioPath, configName);
     } else {
         uploader.clear();
@@ -595,7 +451,7 @@ async function generateInstructTTS() {
     } else if (instructType === 'dialect') {
         dialect = document.getElementById('instruct_dialect').value;
     } else if (instructType === 'ip') {
-        ip = document.getElementById('instruct_ip').value;
+        ip = document.getElementById('instruct_ip_select').getValue();
     } else if (instructType === 'style') {
         style = document.getElementById('instruct_style').value;
     } else if (instructType === 'basic') {
@@ -666,7 +522,7 @@ async function generateZeroShotTTS() {
         var uploader = document.getElementById('zs_audio_uploader');
         promptAudio = uploader ? uploader.getValue() : null;
     }
-    var ip = document.getElementById('zs_instruct_ip').value;
+    var ip = document.getElementById('zs_ip_select').getValue();
     var promptText = document.getElementById('zs_prompt_text').value || null;
 
     if (!text) {

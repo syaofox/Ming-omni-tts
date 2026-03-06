@@ -434,3 +434,269 @@ class AudioUploader extends HTMLElement {
 }
 
 customElements.define('audio-uploader', AudioUploader);
+
+class SearchSelect extends HTMLElement {
+    constructor() {
+        super();
+        this.attachShadow({ mode: 'open' });
+        this._data = [];
+        this._selectedValue = null;
+    }
+
+    static get observedAttributes() {
+        return ['placeholder', 'hidden-id', 'data', 'display-key', 'value-key', 'filter-fields', 'label'];
+    }
+
+    connectedCallback() {
+        this.render();
+        this._initEventListeners();
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (oldValue === newValue) return;
+        if (name === 'data') {
+            try {
+                this._data = JSON.parse(newValue) || [];
+            } catch (e) {
+                this._data = [];
+            }
+        } else if (name === 'display-key' || name === 'value-key' || name === 'filter-fields') {
+            this.render();
+        } else if (name === 'label') {
+            this._updateLabel();
+        }
+    }
+
+    get displayKey() {
+        return this.getAttribute('display-key') || 'name';
+    }
+
+    get valueKey() {
+        return this.getAttribute('value-key') || 'name';
+    }
+
+    get filterFields() {
+        var fields = this.getAttribute('filter-fields') || 'name';
+        return fields.split(',').map(function(f) { return f.trim(); });
+    }
+
+    getValue() {
+        var hiddenInput = this.shadowRoot.getElementById('hidden-input');
+        if (hiddenInput && hiddenInput.value) return hiddenInput.value;
+        
+        if (this._selectedValue) return this._selectedValue;
+        
+        return null;
+    }
+
+    setValue(value) {
+        var self = this;
+        var found = this._data.find(function(item) {
+            return item[self.valueKey] === value;
+        });
+        
+        if (found) {
+            var input = this.shadowRoot.getElementById('search-input');
+            var hiddenInput = this.shadowRoot.getElementById('hidden-input');
+            
+            this._selectedValue = value;
+            if (input) input.value = found[this.displayKey];
+            if (hiddenInput) hiddenInput.value = value;
+            
+            var hiddenId = this.getAttribute('hidden-id');
+            if (hiddenId) {
+                var hiddenEl = document.getElementById(hiddenId);
+                if (hiddenEl) hiddenEl.value = value;
+            }
+        }
+    }
+
+    clear() {
+        this._selectedValue = null;
+        var input = this.shadowRoot.getElementById('search-input');
+        var hiddenInput = this.shadowRoot.getElementById('hidden-input');
+        var dropdown = this.shadowRoot.getElementById('dropdown');
+        
+        if (input) input.value = '';
+        if (hiddenInput) hiddenInput.value = '';
+        if (dropdown) dropdown.style.display = 'none';
+        
+        var hiddenId = this.getAttribute('hidden-id');
+        if (hiddenId) {
+            var hiddenEl = document.getElementById(hiddenId);
+            if (hiddenEl) hiddenEl.value = '';
+        }
+    }
+
+    setData(data) {
+        this._data = data || [];
+    }
+
+    _updateLabel() {
+        var label = this.shadowRoot.querySelector('label');
+        if (label) label.textContent = this.getAttribute('label') || '';
+    }
+
+    _initEventListeners() {
+        var self = this;
+        var input = this.shadowRoot.getElementById('search-input');
+        var dropdown = this.shadowRoot.getElementById('dropdown');
+
+        if (!input || !dropdown) return;
+
+        input.addEventListener('input', function() {
+            self._showDropdown(this.value);
+        });
+
+        input.addEventListener('focus', function() {
+            self._showDropdown(self._input ? self._input.value : '');
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('search-select')) {
+                dropdown.style.display = 'none';
+            }
+        });
+    }
+
+    _showDropdown(filter) {
+        var input = this.shadowRoot.getElementById('search-input');
+        var dropdown = this.shadowRoot.getElementById('dropdown');
+        if (!input || !dropdown) return;
+
+        dropdown.innerHTML = '';
+        dropdown.style.display = 'block';
+
+        var filterLower = (filter || '').toLowerCase().trim();
+        var filterNoSpace = filterLower.replace(/\s+/g, '');
+
+        var self = this;
+
+        var matched = this._data.filter(function(item) {
+            var searchText = self._getSearchText(item);
+            return searchText.toLowerCase().includes(filterLower) ||
+                   searchText.toLowerCase().replace(/\s+/g, '').includes(filterNoSpace);
+        });
+
+        if (matched.length === 0) {
+            var noResult = document.createElement('div');
+            noResult.className = 'no-result';
+            noResult.textContent = '无匹配结果';
+            dropdown.appendChild(noResult);
+            return;
+        }
+
+        matched.forEach(function(item) {
+            var div = document.createElement('div');
+            div.textContent = item[self.displayKey];
+            div.addEventListener('click', function(e) {
+                e.stopPropagation();
+                self._selectItem(item);
+            });
+            dropdown.appendChild(div);
+        });
+    }
+
+    _getSearchText(item) {
+        var fields = this.filterFields;
+        var texts = [];
+        var self = this;
+        fields.forEach(function(field) {
+            var value = item[field];
+            if (value) texts.push(value);
+        });
+        return texts.join(' ');
+    }
+
+    _selectItem(item) {
+        var input = this.shadowRoot.getElementById('search-input');
+        var hiddenInput = this.shadowRoot.getElementById('hidden-input');
+        var dropdown = this.shadowRoot.getElementById('dropdown');
+
+        this._selectedValue = item[this.valueKey];
+        
+        if (input) input.value = item[this.displayKey];
+        if (hiddenInput) hiddenInput.value = item[this.valueKey];
+        if (dropdown) dropdown.style.display = 'none';
+
+        var hiddenId = this.getAttribute('hidden-id');
+        if (hiddenId) {
+            var hiddenEl = document.getElementById(hiddenId);
+            if (hiddenEl) hiddenEl.value = item[this.valueKey];
+        }
+    }
+
+    render() {
+        var placeholder = this.getAttribute('placeholder') || '搜索...';
+        var label = this.getAttribute('label') || '';
+        var labelHtml = label ? '<label>' + label + '</label>' : '';
+
+        this.shadowRoot.innerHTML = `
+            <style>
+                :host {
+                    display: block;
+                    margin-bottom: 15px;
+                }
+                label {
+                    display: block;
+                    margin-bottom: 8px;
+                    font-weight: 500;
+                    color: #333;
+                }
+                .search-container {
+                    position: relative;
+                }
+                input {
+                    width: 100%;
+                    padding: 10px 12px;
+                    border: 1px solid #ddd;
+                    border-radius: 6px;
+                    font-size: 14px;
+                    box-sizing: border-box;
+                    transition: border-color 0.2s;
+                }
+                input:focus {
+                    outline: none;
+                    border-color: #4CAF50;
+                }
+                .dropdown {
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    max-height: 250px;
+                    overflow-y: auto;
+                    background: white;
+                    border: 1px solid #ddd;
+                    border-radius: 6px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                    z-index: 1000;
+                    display: none;
+                }
+                .dropdown div {
+                    padding: 10px 12px;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                }
+                .dropdown div:hover {
+                    background: #f5f5f5;
+                }
+                .dropdown .no-result {
+                    color: #999;
+                    cursor: default;
+                }
+                .dropdown .no-result:hover {
+                    background: transparent;
+                }
+            </style>
+            ${labelHtml}
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="${placeholder}" autocomplete="off">
+                <input type="hidden" id="hidden-input">
+                <div id="dropdown" class="dropdown"></div>
+            </div>
+        `;
+    }
+}
+
+customElements.define('search-select', SearchSelect);

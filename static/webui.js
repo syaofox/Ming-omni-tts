@@ -36,13 +36,13 @@ function updateConfigDropdowns() {
     
     if (instructSelect && instructSelect.setData) {
         instructSelect.setData(instructConfigs.map(function(c) {
-            return { name: c.name + ' (' + (c.pinyin || '') + ')', value: c.name };
+            return { name: c.name, value: c.name };
         }));
     }
     
     if (zsSelect && zsSelect.setData) {
         zsSelect.setData(zeroShotConfigs.map(function(c) {
-            return { name: c.name + ' (' + (c.pinyin || '') + ')', value: c.name };
+            return { name: c.name, value: c.name };
         }));
     }
 }

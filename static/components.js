@@ -73,6 +73,21 @@ class AudioUploader extends HTMLElement {
             dropZone.style.opacity = disabled ? '0.5' : '1';
             dropZone.style.pointerEvents = disabled ? 'none' : 'auto';
         }
+        var displayEl = this.shadowRoot.getElementById('audio-display');
+        if (displayEl) {
+            displayEl.style.pointerEvents = disabled ? 'none' : 'auto';
+            displayEl.style.opacity = disabled ? '0.5' : '1';
+            var audio = displayEl.querySelector('audio');
+            if (audio) {
+                if (disabled) {
+                    audio.pause();
+                }
+            }
+            var clearBtn = displayEl.querySelector('.clear-btn');
+            if (clearBtn) {
+                clearBtn.style.display = disabled ? 'none' : 'inline-block';
+            }
+        }
     }
 
     setAudioPath(audioPath, configName) {
@@ -326,11 +341,11 @@ class SearchSelect extends HTMLElement {
     }
 
     getValue() {
-        var hiddenInput = this.shadowRoot.getElementById('hidden-input');
-        if (hiddenInput && hiddenInput.value) return hiddenInput.value;
-        
+        var searchInput = this.shadowRoot.getElementById('search-input');
+        if (searchInput && searchInput.value) return searchInput.value;
+
         if (this._selectedValue) return this._selectedValue;
-        
+
         return null;
     }
 
